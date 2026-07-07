@@ -5,6 +5,11 @@ markets the bot watches, auto-refreshing in the browser. Each row shows the
 YES/NO book, last trade, volume, a live countdown to settlement, and the bot's
 detected edge/signal (computed with the SAME scanner logic the bot trades on).
 
+You can also click "Take" on a market to log a trade you made — the dashboard
+then tracks it and shows an active P&L that updates as your positions settle to
+wins ($1/contract) or losses ($0). Your ledger is kept server-side in
+logs/dashboard_ledger.json.
+
     # LIVE — real Kalshi data (needs your API keys + network to Kalshi)
     python scripts/dashboard.py --config config/config.yaml
 
@@ -13,9 +18,10 @@ detected edge/signal (computed with the SAME scanner logic the bot trades on).
 
 Then open http://localhost:8787 in your browser.
 
-Note on environments: if you run this where Kalshi is unreachable (e.g. a
-locked-down CI/cloud box), use --demo. "Live data matching the current Kalshi
-market" requires a network that can reach api.elections.kalshi.com.
+Note: settlement (win/loss P&L) requires Kalshi to tell us the market result, so
+realized P&L only advances in LIVE mode. In DEMO mode taken trades show as open
+with mark-to-market unrealized P&L. To fully explore the take/settle loop with
+no keys, use the interactive Artifact preview instead.
 """
 
 from __future__ import annotations
@@ -33,6 +39,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+import src.paper_trader as paper_trader_module
 from src.scanner import MarketScanner
 
 COINS = [
@@ -63,6 +70,89 @@ def _gate_free_scanner(client):
     return s
 
 
+def _new_paper(starting=1000.0):
+    """A PaperTrader that keeps the dashboard ledger in its own file."""
+    paper_trader_module.PAPER_FILE = os.path.join("logs", "dashboard_ledger.json")
+    from src.paper_trader import PaperTrader
+    return PaperTrader(starting_balance=starting)
+
+
+def _coin_of(ticker):
+    for coin, series, _ in COINS:
+        if ticker.startswith(series):
+            return coin
+    return ticker.split("-")[0]
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Ledger — shared take/settle/P&L logic on top of PaperTrader
+# ──────────────────────────────────────────────────────────────────────────
+class Ledger:
+    def __init__(self):
+        self.paper = _new_paper()
+        self._lock = threading.Lock()
+
+    def take(self, ticker, side, price, count):
+        with self._lock:
+            if ticker in self.paper.positions:
+                return  # already holding
+            self.paper.record_entry(ticker, side, int(count), float(price))
+
+    def settle(self, client):
+        with self._lock:
+            try:
+                self.paper.check_settlements(client)
+            except Exception:
+                pass
+
+    def view(self, mid_by_ticker):
+        """Return a JSON-safe ledger snapshot.
+
+        Realized P&L is the sum of SETTLED trade P&L only (a win pays
+        $1/contract, a loss pays $0) — open positions do NOT count as losses
+        just because cash was deployed. Unrealized P&L marks open positions to
+        the current mid.
+        """
+        with self._lock:
+            open_pos = []
+            unreal = 0.0
+            for ticker, p in self.paper.positions.items():
+                mid = mid_by_ticker.get(ticker)
+                cur = mid.get(p["side"]) if mid else None
+                u = (cur - p["entry_price"]) * p["contracts"] if cur is not None else 0.0
+                unreal += u
+                open_pos.append({
+                    "ticker": ticker, "coin": _coin_of(ticker), "side": p["side"],
+                    "entry": p["entry_price"], "qty": p["contracts"],
+                    "now": cur, "unreal": round(u, 2),
+                })
+            realized = sum(c["pnl"] for c in self.paper.closed_trades)
+            wins = sum(1 for c in self.paper.closed_trades if c["won"])
+            losses = sum(1 for c in self.paper.closed_trades if not c["won"])
+            wr = f"{wins / (wins + losses) * 100:.0f}%" if (wins + losses) else "—"
+            closed = [{
+                "ticker": c["ticker"], "coin": _coin_of(c["ticker"]),
+                "side": c["side"], "entry": c["entry_price"], "qty": c["contracts"],
+                "result": c["result"], "won": c["won"], "pnl": round(c["pnl"], 2),
+            } for c in self.paper.closed_trades[-15:]][::-1]
+            return {
+                "realized": round(realized, 2), "unreal": round(unreal, 2),
+                "net": round(realized + unreal, 2),
+                "wins": wins, "losses": losses, "win_rate": wr,
+                "open_count": len(self.paper.positions),
+                "staked": round(sum(p["cost"] for p in self.paper.positions.values()), 2),
+                "open": open_pos, "closed": closed,
+            }
+
+    def clear(self):
+        with self._lock:
+            self.paper.positions = {}
+            self.paper.closed_trades = []
+            self.paper.balance = self.paper.starting_balance
+            self.paper.trade_count = 0
+            self.paper._save()
+
+
 # ──────────────────────────────────────────────────────────────────────────
 # Data providers
 # ──────────────────────────────────────────────────────────────────────────
@@ -81,6 +171,7 @@ class LiveProvider:
         self.client = KalshiClient(api["base_url"], api["key_id"],
                                    api["private_key_path"])
         self.scanner = _gate_free_scanner(self.client)
+        self.ledger = Ledger()
         self.min_interval = min_interval
         self._lock = threading.Lock()
         self._cache = None
@@ -90,6 +181,7 @@ class LiveProvider:
         with self._lock:
             if self._cache and (time.time() - self._cache_at) < self.min_interval:
                 return self._cache
+            self.ledger.settle(self.client)
             snap = self._fetch()
             self._cache = snap
             self._cache_at = time.time()
@@ -120,8 +212,11 @@ class LiveProvider:
                     rows.append(self._row(m))
         rows = [r for r in rows if r]
         rows.sort(key=lambda r: (r["hours_left"], -abs(r["edge"])))
+        mids = {r["ticker"]: {"yes": (r["yes_bid"] + r["yes_ask"]) / 2,
+                              "no": (r["no_bid"] + r["no_ask"]) / 2} for r in rows}
         return {"mode": "LIVE", "error": error, "balance": balance,
-                "updated": datetime.now(timezone.utc).isoformat(), "rows": rows}
+                "updated": datetime.now(timezone.utc).isoformat(), "rows": rows,
+                "ledger": self.ledger.view(mids)}
 
     def _row(self, m):
         sc = self.scanner
@@ -139,6 +234,9 @@ class LiveProvider:
             opp = sc._evaluate_market(m)
         except Exception:
             opp = None
+        # side the bot leans (for the Take button even without a full signal)
+        lean_side = opp.side if opp else ("yes" if ya <= na else "no")
+        lean_ask = ya if lean_side == "yes" else na
         return {
             "ticker": ticker, "coin": _coin_of(ticker),
             "title": m.get("title", ticker),
@@ -146,21 +244,23 @@ class LiveProvider:
             "last": last, "volume": vol, "hours_left": hours, "close_time": ct,
             "edge": round(opp.edge, 4) if opp else 0.0,
             "side": opp.side if opp else "",
+            "lean_side": lean_side, "lean_ask": round(lean_ask, 2),
         }
 
 
 class DemoProvider:
-    """Generates synthetic-but-plausible up/down crypto markets whose prices
-    drift over time, so the screen looks alive without any network."""
+    """Generates synthetic up/down crypto markets whose prices drift over time."""
 
     def __init__(self):
         self.rng = random.Random(1)
         self.client = _DemoClient(self.rng)
         self.scanner = _gate_free_scanner(self.client)
+        self.ledger = Ledger()
         self._t0 = time.time()
 
     def snapshot(self):
         self.client.regenerate(time.time() - self._t0)
+        self.ledger.settle(self.client)  # demo tickers are stable, so no-op mostly
         rows = []
         for series in self.scanner.crypto_series:
             resp = self.client.get_events(series_ticker=series)
@@ -169,8 +269,11 @@ class DemoProvider:
                     rows.append(LiveProvider._row(self, m))
         rows = [r for r in rows if r]
         rows.sort(key=lambda r: (r["hours_left"], -abs(r["edge"])))
+        mids = {r["ticker"]: {"yes": (r["yes_bid"] + r["yes_ask"]) / 2,
+                              "no": (r["no_bid"] + r["no_ask"]) / 2} for r in rows}
         return {"mode": "DEMO", "error": None, "balance": 1000.0,
-                "updated": datetime.now(timezone.utc).isoformat(), "rows": rows}
+                "updated": datetime.now(timezone.utc).isoformat(), "rows": rows,
+                "ledger": self.ledger.view(mids)}
 
 
 class _DemoClient:
@@ -186,11 +289,9 @@ class _DemoClient:
         for coin, series, spot in COINS:
             ms = []
             for i in range(3):
-                # A market implied prob that oscillates over time per coin+bucket.
                 phase = hash((coin, i)) % 100 / 100.0
                 m = 0.5 + 0.18 * math.sin(elapsed / 20.0 + phase * 6.28)
                 m = max(0.1, min(0.9, m))
-                # Occasionally the "last" print diverges from the book (a signal).
                 delta = 0.0
                 if (int(elapsed / 5) + i) % 3 == 0:
                     delta = self.rng.choice([-0.19, 0.19])
@@ -221,12 +322,9 @@ class _DemoClient:
     def get_markets(self, **kw):
         return {"markets": [], "cursor": ""}
 
-
-def _coin_of(ticker):
-    for coin, series, _ in COINS:
-        if ticker.startswith(series):
-            return coin
-    return ticker.split("-")[0]
+    def get_market(self, ticker):
+        # Demo markets never settle (stable tickers); positions stay open.
+        return {"market": {"status": "active"}}
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -235,7 +333,7 @@ def _coin_of(ticker):
 def make_handler(provider, refresh):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *a):
-            pass  # quiet
+            pass
 
         def _send(self, code, body, ctype):
             self.send_response(code)
@@ -244,13 +342,30 @@ def make_handler(provider, refresh):
             self.end_headers()
             self.wfile.write(body)
 
+        def do_POST(self):
+            if self.path.startswith("/api/take"):
+                n = int(self.headers.get("Content-Length", 0))
+                try:
+                    body = json.loads(self.rfile.read(n) or b"{}")
+                    provider.ledger.take(body["ticker"], body["side"],
+                                         body["price"], body.get("count", 10))
+                    ok = True
+                except Exception as e:
+                    ok = False
+                self._send(200, json.dumps({"ok": ok}).encode(), "application/json")
+            elif self.path.startswith("/api/clear"):
+                provider.ledger.clear()
+                self._send(200, b'{"ok":true}', "application/json")
+            else:
+                self._send(404, b"not found", "text/plain")
+
         def do_GET(self):
             if self.path.startswith("/api/markets"):
                 try:
                     data = provider.snapshot()
                 except Exception as e:
                     data = {"mode": "ERROR", "error": str(e), "rows": [],
-                            "balance": None,
+                            "balance": None, "ledger": None,
                             "updated": datetime.now(timezone.utc).isoformat()}
                 self._send(200, json.dumps(data).encode(), "application/json")
             else:
@@ -267,10 +382,10 @@ def main():
                         help="Use synthetic data (no network/keys)")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8787)
-    parser.add_argument("--refresh", type=float, default=5.0,
-                        help="Browser refresh interval (seconds)")
+    parser.add_argument("--refresh", type=float, default=5.0)
     args = parser.parse_args()
 
+    os.makedirs("logs", exist_ok=True)
     if args.demo:
         provider = DemoProvider()
         print("[dashboard] DEMO mode — synthetic data, no Kalshi connection")
@@ -299,152 +414,185 @@ PAGE = r"""<!doctype html>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kalshi Live — Up/Down Crypto</title>
 <style>
-  :root{
-    --bg:#0b0e14; --panel:#131822; --panel2:#0f141d; --line:#222c3a;
-    --txt:#e6edf3; --dim:#7d8aa0; --grn:#2ec36b; --red:#ff5c6c;
-    --amber:#f5b942; --accent:#4aa8ff;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--txt);
-    font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-  header{display:flex;align-items:center;gap:16px;padding:14px 20px;
-    border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:5}
-  h1{font-size:15px;margin:0;letter-spacing:.5px;font-weight:600}
-  h1 .k{color:var(--accent)}
-  .pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;
-    font-size:11px;border:1px solid var(--line);background:var(--panel2)}
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--grn)}
-  .dot.live{animation:pulse 1.6s infinite}
-  .dot.demo{background:var(--amber)}
-  .dot.err{background:var(--red)}
-  @keyframes pulse{0%{opacity:1;box-shadow:0 0 0 0 rgba(46,195,107,.5)}
-    70%{opacity:.6;box-shadow:0 0 0 7px rgba(46,195,107,0)}100%{opacity:1}}
-  .spacer{flex:1}
-  .stats{display:flex;gap:10px;flex-wrap:wrap;padding:12px 20px}
-  .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;
-    padding:10px 14px;min-width:120px}
-  .stat .lbl{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.8px}
-  .stat .val{font-size:20px;font-weight:600;margin-top:3px}
-  .wrap{padding:0 20px 40px;overflow-x:auto}
-  table{width:100%;border-collapse:collapse;min-width:860px}
-  th,td{padding:8px 10px;text-align:right;white-space:nowrap}
-  th{color:var(--dim);font-weight:500;font-size:10px;text-transform:uppercase;
-    letter-spacing:.6px;border-bottom:1px solid var(--line);background:var(--bg)}
-  td.l,th.l{text-align:left}
-  tbody tr{border-bottom:1px solid #171e28}
-  tbody tr.sig{background:linear-gradient(90deg,rgba(46,195,107,.10),transparent)}
-  tbody tr.flash{animation:flash .8s}
-  @keyframes flash{0%{background:rgba(74,168,255,.18)}100%{}}
-  .coin{display:inline-block;min-width:42px;padding:2px 7px;border-radius:6px;
-    background:var(--panel);border:1px solid var(--line);color:var(--accent);font-weight:600;text-align:center}
-  .yes{color:var(--grn)} .no{color:var(--red)} .mut{color:var(--dim)}
-  .badge{padding:2px 8px;border-radius:6px;font-weight:600;font-size:11px}
-  .badge.buy-yes{background:rgba(46,195,107,.16);color:var(--grn)}
-  .badge.buy-no{background:rgba(255,92,108,.16);color:var(--red)}
-  .badge.none{color:var(--dim)}
-  .cd{font-variant-numeric:tabular-nums}
-  .cd.soon{color:var(--amber)} .cd.urgent{color:var(--red)}
-  .bar{height:5px;border-radius:3px;background:#1b2431;margin-top:5px;overflow:hidden}
-  .bar>i{display:block;height:100%;background:var(--accent)}
-  footer{color:var(--dim);padding:10px 20px;font-size:11px;border-top:1px solid var(--line)}
-  .err{color:var(--red)}
+  :root{--bg:#0b0e14;--panel:#131822;--panel2:#0f141d;--line:#222c3a;--txt:#e6edf3;
+    --dim:#7d8aa0;--dim2:#556074;--accent:#4aa8ff;--grn:#2ec36b;--red:#ff5c6c;--amber:#f5b942;
+    --grn-w:rgba(46,195,107,.14);--red-w:rgba(255,92,108,.14)}
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:radial-gradient(1200px 500px at 80% -10%,rgba(74,168,255,.06),transparent 60%),var(--bg);
+    color:var(--txt);font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;-webkit-font-smoothing:antialiased}
+  .term{max-width:1180px;margin:0 auto;padding:0 18px 48px}
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 4px 14px;
+    border-bottom:1px solid var(--line);position:sticky;top:0;background:linear-gradient(var(--bg),rgba(11,14,20,.86));backdrop-filter:blur(6px);z-index:10}
+  .brand{font-family:system-ui,-apple-system,Segoe UI,sans-serif;font-size:16px;font-weight:700;margin:0;display:flex;align-items:center;gap:9px}
+  .brand .mark{color:var(--accent)} .brand .sub{color:var(--dim);font-weight:500;font-size:12px}
+  .pill{display:inline-flex;align-items:center;gap:7px;padding:4px 11px;border-radius:999px;font-size:11px;
+    border:1px solid var(--line);background:var(--panel2);color:var(--dim);font-variant-numeric:tabular-nums}
+  .pill b{color:var(--txt);font-weight:600}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--grn)} .live .dot{animation:pulse 1.7s infinite}
+  .dot.demo{background:var(--amber)} .dot.err{background:var(--red)}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(46,195,107,.5)}70%{box-shadow:0 0 0 7px rgba(46,195,107,0)}100%{}}
+  .grow{flex:1} select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:7px;padding:3px 6px;font:inherit;font-size:11px}
+  .pnlbar{display:flex;gap:14px;flex-wrap:wrap;background:linear-gradient(180deg,var(--panel),var(--panel2));
+    border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:16px 0 14px}
+  .pnlbar .big{display:flex;flex-direction:column;justify-content:center;min-width:170px}
+  .pnlbar .big .lbl{color:var(--dim);font-size:10px;letter-spacing:.9px;text-transform:uppercase}
+  .pnlbar .big .num{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1;margin-top:2px}
+  .pnlbar .cells{display:grid;grid-template-columns:repeat(4,minmax(84px,1fr));gap:12px;flex:1}
+  .cell .lbl{color:var(--dim);font-size:10px;letter-spacing:.7px;text-transform:uppercase}
+  .cell .v{font-size:16px;font-weight:600;margin-top:3px;font-variant-numeric:tabular-nums}
+  .ghost{background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font:inherit;font-size:11px;cursor:pointer}
+  .ghost:hover{color:var(--txt);border-color:var(--dim2)}
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:14px 0}
+  .stat{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .stat .lbl{color:var(--dim);font-size:10px;letter-spacing:.9px;text-transform:uppercase}
+  .stat .val{font-size:22px;font-weight:650;margin-top:5px;font-variant-numeric:tabular-nums}
+  .stat .foot{font-size:10.5px;color:var(--dim2);margin-top:2px}
+  .section-h{display:flex;align-items:center;gap:10px;margin:22px 2px 10px}
+  .section-h h2{font-size:12px;letter-spacing:.9px;text-transform:uppercase;color:var(--dim);margin:0;font-weight:600}
+  .section-h .rule{flex:1;height:1px;background:var(--line)}
+  .tablewrap{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel2)}
+  .scroll{overflow-x:auto} table{width:100%;border-collapse:collapse;min-width:940px}
+  thead th{color:var(--dim);font-weight:500;font-size:10px;letter-spacing:.7px;text-transform:uppercase;text-align:right;padding:11px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+  thead th.l,tbody td.l{text-align:left}
+  tbody td{padding:9px 12px;text-align:right;border-bottom:1px solid #161d27;font-variant-numeric:tabular-nums;white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr.sig{background:linear-gradient(90deg,var(--grn-w),transparent 55%)}
+  tbody tr.sig.no{background:linear-gradient(90deg,var(--red-w),transparent 55%)}
+  .coin{display:inline-flex;justify-content:center;min-width:46px;padding:3px 8px;border-radius:7px;background:#0e1420;border:1px solid var(--line);color:var(--accent);font-weight:700;font-size:11px}
+  .up{color:var(--grn)} .down{color:var(--red)} .mut{color:var(--dim)} .book span{color:var(--dim2)}
+  .chip{padding:3px 9px;border-radius:7px;font-weight:700;font-size:11px}
+  .chip.yes{background:var(--grn-w);color:var(--grn)} .chip.no{background:var(--red-w);color:var(--red)} .chip.flat{color:var(--dim2);font-weight:500}
+  .edge.pos{color:var(--grn);font-weight:600}
+  .cd.soon{color:var(--amber)} .cd.urgent{color:var(--red);font-weight:600}
+  .take{border:1px solid var(--accent);color:var(--accent);background:rgba(74,168,255,.10);border-radius:7px;padding:5px 10px;font:inherit;font-size:11px;font-weight:600;cursor:pointer}
+  .take:hover{background:rgba(74,168,255,.22)} .take.held{border-color:var(--grn);color:var(--grn);background:var(--grn-w);cursor:default}
+  .badge{padding:2px 8px;border-radius:6px;font-weight:700;font-size:10.5px}
+  .badge.won{background:var(--grn-w);color:var(--grn)} .badge.lost{background:var(--red-w);color:var(--red)} .badge.open{background:rgba(74,168,255,.12);color:var(--accent)}
+  .empty{padding:16px 14px;color:var(--dim2);font-size:12px}
+  footer{color:var(--dim2);font-size:11px;margin-top:16px;line-height:1.6} footer .warn{color:var(--amber)} .err{color:var(--red)}
+  @media (max-width:860px){.stats{grid-template-columns:repeat(2,1fr)}.pnlbar .cells{grid-template-columns:repeat(2,1fr)}}
 </style></head>
 <body>
-<header>
-  <h1><span class="k">◆ KALSHI</span> LIVE · up/down crypto</h1>
-  <span class="pill"><span id="dot" class="dot live"></span><b id="mode">connecting…</b></span>
-  <span class="pill">refresh <b id="rf"></b></span>
-  <div class="spacer"></div>
+<div class="term">
+<header id="hdr" class="live">
+  <h1 class="brand"><span class="mark">◆</span> KALSHI&nbsp;<span class="sub">up/down crypto terminal</span></h1>
+  <span class="pill"><span id="dot" class="dot"></span><b id="mode">connecting…</b></span>
+  <div class="grow"></div>
+  <span class="pill">size <select id="qty"><option>10</option><option>25</option><option>50</option><option>100</option></select> contracts</span>
   <span class="pill">updated <b id="upd">—</b></span>
 </header>
-<div class="stats">
-  <div class="stat"><div class="lbl">Markets tracked</div><div class="val" id="s-count">—</div></div>
-  <div class="stat"><div class="lbl">Bot signals</div><div class="val yes" id="s-sig">—</div></div>
-  <div class="stat"><div class="lbl">Best edge</div><div class="val" id="s-edge">—</div></div>
-  <div class="stat"><div class="lbl">Total volume</div><div class="val" id="s-vol">—</div></div>
-  <div class="stat"><div class="lbl">Balance</div><div class="val" id="s-bal">—</div></div>
-</div>
-<div class="wrap">
-<table>
-  <thead><tr>
-    <th class="l">Market</th><th>Coin</th>
-    <th>YES bid/ask</th><th>NO bid/ask</th><th>Last</th><th>Vol</th>
-    <th>Closes in</th><th>Edge</th><th class="l">Signal</th>
-  </tr></thead>
-  <tbody id="rows"><tr><td class="l mut" colspan="9">Loading…</td></tr></tbody>
-</table>
-</div>
+
+<section class="pnlbar" id="pnlbar" style="display:none">
+  <div class="big"><div class="lbl">Active P&amp;L</div><div class="num" id="p-net">$0.00</div></div>
+  <div class="cells">
+    <div class="cell"><div class="lbl">Realized</div><div class="v" id="p-real">$0.00</div></div>
+    <div class="cell"><div class="lbl">Unrealized</div><div class="v" id="p-unreal">$0.00</div></div>
+    <div class="cell"><div class="lbl">Record W–L</div><div class="v" id="p-wl">0–0</div></div>
+    <div class="cell"><div class="lbl">Win rate</div><div class="v" id="p-wr">—</div></div>
+  </div>
+  <div style="display:flex;align-items:center"><button class="ghost" id="clear">Clear ledger</button></div>
+</section>
+
+<section class="stats">
+  <div class="stat"><div class="lbl">Markets</div><div class="val" id="s-count">—</div><div class="foot">up/down contracts</div></div>
+  <div class="stat"><div class="lbl">Bot signals</div><div class="val up" id="s-sig">—</div><div class="foot">edge ≥ 5%</div></div>
+  <div class="stat"><div class="lbl">Best edge</div><div class="val" id="s-edge">—</div><div class="foot">fair − ask</div></div>
+  <div class="stat"><div class="lbl">Open trades</div><div class="val" id="s-open">0</div><div class="foot">you're holding</div></div>
+  <div class="stat"><div class="lbl">Balance</div><div class="val" id="s-bal">—</div><div class="foot">Kalshi account</div></div>
+</section>
+
+<div class="tablewrap"><div class="scroll"><table>
+  <thead><tr><th class="l">Market</th><th>Coin</th><th>YES bid/ask</th><th>NO bid/ask</th>
+    <th>Last</th><th>Vol</th><th>Closes in</th><th>Edge</th><th>Signal</th><th class="l">Trade</th></tr></thead>
+  <tbody id="rows"><tr><td class="l mut" colspan="10">Loading…</td></tr></tbody>
+</table></div></div>
+
+<div class="section-h"><h2>My trades</h2><span class="rule"></span></div>
+<div class="tablewrap"><div class="scroll"><table>
+  <thead><tr><th class="l">Market</th><th>Side</th><th>Entry</th><th>Qty</th><th>Now / Result</th><th>P&amp;L</th><th class="l">Status</th></tr></thead>
+  <tbody id="ledger"><tr><td class="empty l" colspan="7">No trades yet — click <b>Take</b> on a market above.</td></tr></tbody>
+</table></div></div>
+
 <footer id="foot">Waiting for data…</footer>
+</div>
 <script>
 const REFRESH=parseInt("__REFRESH__");
-document.getElementById('rf').textContent=(REFRESH/1000)+'s';
-let closeTimes={}; // ticker -> epoch ms
-let prevSig={};
-
+let closeTimes={};
 function fmtC(v){return v>0?('$'+v.toFixed(2)):'—';}
 function fmtVol(v){v=v||0;return v>=1000?(v/1000).toFixed(1)+'k':String(Math.round(v));}
 function pct(v){return (v>=0?'+':'')+(v*100).toFixed(1)+'%';}
-
-function countdown(ms){
-  let d=ms-Date.now();
-  if(d<0) d=0;
-  const m=Math.floor(d/60000), s=Math.floor((d%60000)/1000);
-  let cls=d<60000?'urgent':(d<300000?'soon':'');
-  return '<span class="cd '+cls+'">'+m+'m '+(s<10?'0':'')+s+'s</span>';
-}
-function tick(){
-  document.querySelectorAll('tr[data-t]').forEach(tr=>{
-    const t=tr.getAttribute('data-t');
-    if(closeTimes[t]) tr.querySelector('.cdcell').innerHTML=countdown(closeTimes[t]);
-  });
-}
+function signed(v){return (v>=0?'+$':'-$')+Math.abs(v).toFixed(2);}
+function countdown(ms){let d=Math.max(0,ms-Date.now());const m=Math.floor(d/60000),s=Math.floor(d%60000/1000);
+  let c=d<60000?'urgent':(d<300000?'soon':'');return '<span class="cd '+c+'">'+m+'m '+(s<10?'0':'')+s+'s</span>';}
+function tick(){document.querySelectorAll('tr[data-t]').forEach(tr=>{const t=tr.getAttribute('data-t');
+  if(closeTimes[t]) tr.querySelector('.cdcell').innerHTML=countdown(closeTimes[t]);});}
 setInterval(tick,1000);
 
+async function take(ticker,side,price){
+  await fetch('/api/take',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ticker,side,price,count:parseInt(document.getElementById('qty').value)||10})});
+  load();
+}
+document.getElementById('clear').onclick=async()=>{if(confirm('Clear all tracked trades?')){await fetch('/api/clear',{method:'POST'});load();}};
+
 async function load(){
-  let data;
-  try{ data=await (await fetch('/api/markets')).json(); }
-  catch(e){ document.getElementById('mode').textContent='disconnected';
-    document.getElementById('dot').className='dot err'; return; }
-
+  let d; try{ d=await (await fetch('/api/markets')).json(); }
+  catch(e){ document.getElementById('mode').textContent='disconnected'; document.getElementById('dot').className='dot err'; return; }
   const dot=document.getElementById('dot');
-  dot.className='dot '+(data.mode==='LIVE'?'live':(data.mode==='DEMO'?'demo':'err'));
-  document.getElementById('mode').textContent=data.mode+(data.mode==='DEMO'?' (synthetic)':'');
-  document.getElementById('upd').textContent=new Date(data.updated).toLocaleTimeString();
+  dot.className='dot '+(d.mode==='LIVE'?'live':(d.mode==='DEMO'?'demo':'err'));
+  document.getElementById('mode').textContent=d.mode+(d.mode==='DEMO'?' (synthetic)':'');
+  document.getElementById('upd').textContent=new Date(d.updated).toLocaleTimeString();
 
-  const rows=data.rows||[];
+  const rows=d.rows||[], L=d.ledger;
+  const held=new Set((L&&L.open||[]).map(p=>p.ticker));
   const sigs=rows.filter(r=>r.side);
-  const best=rows.reduce((a,r)=>Math.max(a,r.edge||0),0);
-  const vol=rows.reduce((a,r)=>a+(r.volume||0),0);
   document.getElementById('s-count').textContent=rows.length;
   document.getElementById('s-sig').textContent=sigs.length;
+  const best=rows.reduce((a,r)=>Math.max(a,r.edge||0),0);
   document.getElementById('s-edge').textContent=best>0?pct(best):'—';
-  document.getElementById('s-vol').textContent=fmtVol(vol);
-  document.getElementById('s-bal').textContent=data.balance!=null?('$'+data.balance.toFixed(2)):'—';
+  document.getElementById('s-bal').textContent=d.balance!=null?('$'+d.balance.toFixed(2)):'—';
+  document.getElementById('s-open').textContent=L?L.open_count:0;
 
-  const tb=document.getElementById('rows');
-  closeTimes={};
-  tb.innerHTML = rows.length? rows.map(r=>{
+  const tb=document.getElementById('rows'); closeTimes={};
+  tb.innerHTML=rows.length?rows.map(r=>{
     closeTimes[r.ticker]=new Date(r.close_time).getTime();
-    const sig=r.side?('<span class="badge buy-'+r.side+'">BUY '+r.side.toUpperCase()+'</span>')
-                     :'<span class="badge none">—</span>';
-    const edge=r.edge>0?('<span class="yes">'+pct(r.edge)+'</span>'):'<span class="mut">—</span>';
-    const flash=(r.side && !prevSig[r.ticker])?' flash':'';
-    return '<tr data-t="'+r.ticker+'" class="'+(r.side?'sig':'')+flash+'">'
-      +'<td class="l">'+r.title+'</td>'
-      +'<td><span class="coin">'+r.coin+'</span></td>'
-      +'<td><span class="mut">'+fmtC(r.yes_bid)+'</span> / '+fmtC(r.yes_ask)+'</td>'
-      +'<td><span class="mut">'+fmtC(r.no_bid)+'</span> / '+fmtC(r.no_ask)+'</td>'
-      +'<td>'+fmtC(r.last)+'</td>'
-      +'<td class="mut">'+fmtVol(r.volume)+'</td>'
-      +'<td class="cdcell">'+countdown(closeTimes[r.ticker])+'</td>'
-      +'<td>'+edge+'</td>'
-      +'<td class="l">'+sig+'</td></tr>';
-  }).join(''):'<tr><td class="l mut" colspan="9">No open up/down crypto markets right now.</td></tr>';
+    const sig=r.side?('<span class="chip '+r.side+'">BUY '+r.side.toUpperCase()+'</span>'):'<span class="chip flat">—</span>';
+    const edge=r.edge>0?('<span class="edge pos">'+pct(r.edge)+'</span>'):'<span class="mut">—</span>';
+    const btn=held.has(r.ticker)?'<button class="take held" disabled>✓ holding</button>'
+      :'<button class="take" onclick="take(\''+r.ticker+'\',\''+r.lean_side+'\','+r.lean_ask+')">Take '+r.lean_side.toUpperCase()+' $'+r.lean_ask.toFixed(2)+'</button>';
+    return '<tr data-t="'+r.ticker+'" class="'+(r.side?'sig '+r.side:'')+'">'
+      +'<td class="l">'+r.title+'</td><td><span class="coin">'+r.coin+'</span></td>'
+      +'<td class="book"><span>'+fmtC(r.yes_bid)+'</span> / '+fmtC(r.yes_ask)+'</td>'
+      +'<td class="book"><span>'+fmtC(r.no_bid)+'</span> / '+fmtC(r.no_ask)+'</td>'
+      +'<td>'+fmtC(r.last)+'</td><td class="mut">'+fmtVol(r.volume)+'</td>'
+      +'<td class="cdcell">'+countdown(closeTimes[r.ticker])+'</td><td>'+edge+'</td>'
+      +'<td>'+sig+'</td><td class="l">'+btn+'</td></tr>';
+  }).join(''):'<tr><td class="l mut" colspan="10">No open up/down crypto markets right now.</td></tr>';
 
-  prevSig={}; sigs.forEach(r=>prevSig[r.ticker]=true);
+  // ledger
+  if(L){
+    document.getElementById('pnlbar').style.display=(L.open.length||L.closed.length)?'flex':'none';
+    const set=(id,v)=>{const e=document.getElementById(id);e.textContent=signed(v);e.className=(id==='p-net'?'num ':'v ')+(v>=0?'up':'down');};
+    set('p-net',L.net);set('p-real',L.realized);set('p-unreal',L.unreal);
+    document.getElementById('p-wl').textContent=L.wins+'–'+L.losses;
+    document.getElementById('p-wr').textContent=L.win_rate;
+    const lb=document.getElementById('ledger');
+    const items=L.open.map(p=>({...p,st:'open'})).concat(L.closed.map(p=>({...p,st:p.won?'won':'lost'})));
+    lb.innerHTML=items.length?items.map(p=>{
+      const now=p.st==='open'?fmtC(p.now):(p.result?p.result.toUpperCase():'—');
+      const pnl=p.st==='open'?signed(p.unreal):signed(p.pnl);
+      const cls=p.st==='won'?'up':(p.st==='lost'?'down':(pnl[0]==='+'?'up':'down'));
+      const badge='<span class="badge '+p.st+'">'+(p.st==='won'?'WON':p.st==='lost'?'LOST':'OPEN')+'</span>';
+      return '<tr><td class="l">'+p.coin+' '+p.side.toUpperCase()+' · '+p.ticker+'</td>'
+        +'<td><span class="chip '+p.side+'">'+p.side.toUpperCase()+'</span></td>'
+        +'<td>'+fmtC(p.entry)+'</td><td>'+p.qty+'</td><td>'+now+'</td>'
+        +'<td class="'+cls+'">'+pnl+'</td><td class="l">'+badge+'</td></tr>';
+    }).join(''):'<tr><td class="empty l" colspan="7">No trades yet — click <b>Take</b> on a market above.</td></tr>';
+  }
   const f=document.getElementById('foot');
-  f.innerHTML = data.error? ('<span class="err">API note: '+data.error+'</span>')
-    : (rows.length+' markets · '+sigs.length+' signal(s) · edge = bot fair value − ask (price-divergence heuristic, not a guarantee)');
+  f.innerHTML=d.error?('<span class="err">API note: '+d.error+'</span>')
+    :(rows.length+' markets · '+sigs.length+' signal(s) · edge = bot fair value − ask (heuristic, not a guarantee)'
+      +(d.mode==='DEMO'?' · <span class="warn">demo trades don\'t settle — use LIVE for win/loss P&L</span>':''));
 }
 load(); setInterval(load,REFRESH);
 </script>

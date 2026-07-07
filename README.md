@@ -51,6 +51,13 @@ python scripts/dashboard.py --demo                         # synthetic, no keys
 Then open <http://localhost:8787>. Live mode needs your API keys and a network
 that can reach Kalshi; use `--demo` anywhere else to preview the screen.
 
+**Track your trades.** Click **Take** on any market to log a trade you made. The
+dashboard keeps a ledger (`logs/dashboard_ledger.json`) and shows an **active
+P&L** that updates as your positions settle — a win pays $1/contract, a loss
+pays $0. Realized P&L counts only settled trades; open positions are marked to
+the current price as unrealized. (Settlement outcomes come from Kalshi, so
+realized P&L advances in LIVE mode; in `--demo` trades stay open.)
+
 ## Focus mode
 
 `config/config.yaml` selects what gets scanned:
