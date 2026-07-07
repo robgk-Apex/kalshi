@@ -37,6 +37,20 @@ unrelated to the outcome) *loses ~20%*, which is the honest risk of the
 heuristic. Synthetic markets are a controlled model, **not** a prediction of
 live Kalshi behavior — always `--dry-run` against real data before going live.
 
+## Live dashboard
+
+A zero-dependency visual dashboard of the up/down crypto markets, auto-refreshing
+in your browser with YES/NO books, live settlement countdowns, and the bot's
+detected signals:
+
+```bash
+python scripts/dashboard.py --config config/config.yaml   # LIVE Kalshi data
+python scripts/dashboard.py --demo                         # synthetic, no keys
+```
+
+Then open <http://localhost:8787>. Live mode needs your API keys and a network
+that can reach Kalshi; use `--demo` anywhere else to preview the screen.
+
 ## Focus mode
 
 `config/config.yaml` selects what gets scanned:
