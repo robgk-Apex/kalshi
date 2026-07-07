@@ -83,21 +83,32 @@ arb, (b) remove the branch, or (c) at minimum route it through the gates and
 stop deriving Kelly `win_prob` from `1 - (yes + no)`. This is a
 **strategy decision**, so it is left to you.
 
-### C4 — Live position count and duplicate-guard are not synced to the account
+### C4 — Live position count and duplicate-guard are not synced to the account — ⚠️ partially fixed
 `__main__.py`, `executor.py`, `risk_manager.py`
 
-`max_positions` is enforced via `risk.open_positions`. In live mode:
-- `open_positions` starts at **0** every process start and is **only
+`max_positions` is enforced via `risk.open_positions`. In live mode, originally:
+- `open_positions` started at **0** every process start and was **only
   incremented** (`record_open`); `record_close` is never called. It also
   increments on *resting/unfilled* limit orders.
-- `held_tickers` (the re-buy guard) starts **empty** in live mode (only
+- `held_tickers` (the re-buy guard) started **empty** in live mode (only
   pre-seeded from paper positions) and is never persisted.
 
-So after any restart (crash, deploy, STOP), the bot forgets its real positions:
-`max_positions` is defeated and it re-buys tickers it already holds →
-over-exposure beyond the configured cap. Correct fix: seed `open_positions` and
-`held_tickers` from `client.get_positions()` at startup and
-decrement/remove on close+settlement. Depends on live API schema; left open.
+So after any restart (crash, deploy, STOP), the bot forgot its real positions:
+`max_positions` was defeated and it could re-buy tickers it already held →
+over-exposure beyond the configured cap.
+
+**Fix applied:** at live startup the bot now seeds `held_tickers` and
+`open_positions` from `client.get_positions()` (`fetch_live_positions`, which
+fails safe — returns `None` on error so state isn't wiped on a transient API
+hiccup). This resolves the restart-over-exposure failure. Covered by
+`tests/test_bot.py::TestLivePositionSync`.
+
+**Residual (needs the C2 fill-accounting work to fully close):** within a single
+long-running session, `open_positions` is still only incremented and not
+decremented on settlement, and resting-but-unfilled orders aren't reconciled
+against `get_orders()`. The drift is *conservative* (it can stop trading early,
+not over-trade). A periodic in-loop resync from `get_positions()` would remove
+the drift but shares the live-API-schema uncertainty noted in C2.
 
 ### M1 — Stop-loss measures deployed cash, not equity
 `risk_manager.py`, `__main__.py`

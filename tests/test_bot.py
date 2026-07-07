@@ -283,5 +283,40 @@ class TestExecutor(unittest.TestCase):
         self.assertEqual(summary["dry_run"], 2)
 
 
+# ── Live position sync (restart safety) ────────────────
+class TestLivePositionSync(unittest.TestCase):
+    from src.__main__ import fetch_live_positions as _fetch
+
+    def _fetch_positions(self, resp_or_exc):
+        class C:
+            def get_positions(self_inner):
+                if isinstance(resp_or_exc, Exception):
+                    raise resp_or_exc
+                return resp_or_exc
+
+        return TestLivePositionSync._fetch(C())
+
+    def test_parses_nonzero_market_positions(self):
+        held = self._fetch_positions({
+            "market_positions": [
+                {"ticker": "AAA", "position": 12},
+                {"ticker": "BBB", "position": -5},
+                {"ticker": "CCC", "position": 0},  # flat -> ignored
+            ]
+        })
+        self.assertEqual(held, {"AAA", "BBB"})
+
+    def test_falls_back_to_positions_key(self):
+        held = self._fetch_positions({"positions": [{"ticker": "ZZZ", "quantity": 3}]})
+        self.assertEqual(held, {"ZZZ"})
+
+    def test_returns_none_on_error(self):
+        # None (not empty set) so callers don't wipe known state on a transient error.
+        self.assertIsNone(self._fetch_positions(RuntimeError("api down")))
+
+    def test_empty_when_no_positions(self):
+        self.assertEqual(self._fetch_positions({"market_positions": []}), set())
+
+
 if __name__ == "__main__":
     unittest.main()

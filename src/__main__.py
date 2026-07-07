@@ -38,6 +38,34 @@ def setup_logging(config: dict):
     )
 
 
+def fetch_live_positions(client):
+    """Return the set of tickers with a nonzero open position on the account.
+
+    Returns None on any failure so callers can distinguish "no positions" from
+    "could not fetch" and avoid wiping known state on a transient API error.
+    Parses defensively across the possible Kalshi response shapes.
+    """
+    logger = logging.getLogger("kalshi-bot")
+    try:
+        resp = client.get_positions()
+    except Exception as e:
+        logger.warning(f"Could not sync positions from account: {e}")
+        return None
+
+    rows = resp.get("market_positions") or resp.get("positions") or []
+    held = set()
+    for row in rows:
+        ticker = row.get("ticker", "")
+        qty = row.get("position", row.get("quantity", 0)) or 0
+        try:
+            qty = int(qty)
+        except (TypeError, ValueError):
+            qty = 0
+        if ticker and qty != 0:
+            held.add(ticker)
+    return held
+
+
 def main():
     parser = argparse.ArgumentParser(description="Kalshi Trading Bot")
     parser.add_argument("--dry-run", action="store_true", help="Scan only, no real trades")
@@ -131,10 +159,21 @@ def main():
     logger.info(f"Ctrl+C is DISABLED. To stop the bot:")
     logger.info(f"  echo. > C:\\Users\\robgk\\kalshi-bot\\STOP")
 
-    # Track all open positions (both paper and live) to prevent duplicates
+    # Track all open positions (both paper and live) to prevent duplicates.
+    # In LIVE mode, seed from the real account so a restart does not forget
+    # existing positions and re-buy them / exceed max_positions.
     held_tickers = set()
     if paper:
         held_tickers = set(paper.positions.keys())
+    else:
+        live_held = fetch_live_positions(client)
+        if live_held is not None:
+            held_tickers = live_held
+            risk.open_positions = len(live_held)
+            logger.info(
+                f"[LIVE] Synced {len(live_held)} existing position(s) from account "
+                f"(counts toward max_positions={risk.max_positions})"
+            )
 
     # Main loop
     scan_count = 0
