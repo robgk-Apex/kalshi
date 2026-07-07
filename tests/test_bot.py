@@ -1,8 +1,14 @@
-"""Tests for the Kalshi trading bot."""
+"""Tests for the Kalshi trading bot.
+
+These target the ACTIVE implementation reachable from `python -m src`:
+the event-based, dollar-denominated MarketScanner plus the RiskManager and
+TradeExecutor.
+"""
 
 import unittest
 import sys
 import os
+from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -13,13 +19,36 @@ from src.executor import TradeExecutor
 
 # ── Mock client for testing ────────────────────────────
 class MockClient:
+    """Minimal stand-in for KalshiClient.
+
+    The scanner discovers markets via get_events() with nested markets, so we
+    serve our fixture markets from the first get_events() call (which the
+    scanner makes while sweeping its crypto series) and empty responses after.
+    """
+
     def __init__(self, markets=None, balance=10000):
         self._markets = markets or []
         self._balance = balance
+        self._events_served = False
         self.orders_placed = []
+
+    def get_events(self, **kwargs):
+        if self._events_served:
+            return {"events": [], "cursor": ""}
+        self._events_served = True
+        return {
+            "events": [{"event_ticker": "TEST-EVENT", "markets": self._markets}],
+            "cursor": "",
+        }
 
     def get_markets(self, **kwargs):
         return {"markets": self._markets, "cursor": ""}
+
+    def get_market(self, ticker):
+        for m in self._markets:
+            if m.get("ticker") == ticker:
+                return {"market": m}
+        return {"market": {}}
 
     def get_balance(self):
         return {"balance": self._balance}
@@ -29,20 +58,30 @@ class MockClient:
         return {"order": {"order_id": "test-123", "status": "resting"}}
 
 
-def make_market(ticker="TEST-YES", yes_bid=45, yes_ask=50, no_bid=45, no_ask=55,
-                volume=500, last_price=48):
+def _future_close(hours=2):
+    """A settlement time inside the scanner's expiry window (dynamic so the
+    fixture never goes stale)."""
+    return (datetime.now(timezone.utc) + timedelta(hours=hours)).isoformat()
+
+
+def make_market(ticker="TEST-YES", yes_bid=0.45, yes_ask=0.50, no_bid=0.45,
+                no_ask=0.55, volume=500, last_price=0.48, hours_to_close=2):
+    """Build a market dict in the dollar-denominated shape the scanner reads.
+
+    Prices are in DOLLARS (0.00-1.00), matching Kalshi API v2 *_dollars fields.
+    """
     return {
         "ticker": ticker,
         "event_ticker": "TEST-EVENT",
         "title": f"Test Market {ticker}",
         "status": "open",
-        "yes_bid": yes_bid,
-        "yes_ask": yes_ask,
-        "no_bid": no_bid,
-        "no_ask": no_ask,
-        "last_price": last_price,
+        "yes_bid_dollars": yes_bid,
+        "yes_ask_dollars": yes_ask,
+        "no_bid_dollars": no_bid,
+        "no_ask_dollars": no_ask,
+        "last_price_dollars": last_price,
         "volume": volume,
-        "close_time": "2026-04-01T00:00:00Z",
+        "close_time": _future_close(hours_to_close),
     }
 
 
@@ -54,53 +93,76 @@ DEFAULT_CONFIG = {
 
 
 # ── Scanner Tests ──────────────────────────────────────
+def _make_scanner(client, config=None, gates=False):
+    """Build a scanner. By default the real-world gates (crypto/weather/
+    probability checkers) are disabled so tests exercise the core
+    mispricing-detection logic deterministically."""
+    scanner = MarketScanner(client, config or DEFAULT_CONFIG)
+    if not gates:
+        scanner.crypto_analyzer = None
+        scanner.weather_analyzer = None
+        scanner.probability_checker = None
+    return scanner
+
+
 class TestScanner(unittest.TestCase):
 
     def test_no_markets_returns_empty(self):
         client = MockClient(markets=[])
-        scanner = MarketScanner(client, DEFAULT_CONFIG)
+        scanner = _make_scanner(client)
         result = scanner.scan()
         self.assertEqual(result, [])
 
     def test_low_volume_filtered_out(self):
         market = make_market(volume=10)  # below min_volume=100
         client = MockClient(markets=[market])
-        scanner = MarketScanner(client, DEFAULT_CONFIG)
+        scanner = _make_scanner(client)
+        result = scanner.scan()
+        self.assertEqual(result, [])
+
+    def test_expired_market_filtered_out(self):
+        # Settlement in the past -> scanner should skip it entirely.
+        market = make_market(hours_to_close=-5, yes_ask=0.40, no_ask=0.50)
+        client = MockClient(markets=[market])
+        scanner = _make_scanner(client)
         result = scanner.scan()
         self.assertEqual(result, [])
 
     def test_arbitrage_detected(self):
-        # YES ask=40 + NO ask=50 = 90 cents < $1 = guaranteed profit
-        market = make_market(yes_ask=40, no_ask=50, yes_bid=35, no_bid=45)
+        # YES ask $0.40 + NO ask $0.50 = $0.90 < $1 = guaranteed profit.
+        # Arbitrage is detected regardless of the gates.
+        market = make_market(yes_ask=0.40, no_ask=0.50, yes_bid=0.35, no_bid=0.45)
         client = MockClient(markets=[market])
-        scanner = MarketScanner(client, DEFAULT_CONFIG)
+        scanner = _make_scanner(client)
         result = scanner.scan()
         self.assertGreater(len(result), 0)
         self.assertGreater(result[0].edge, 0)
+        # Cheaper side is bought; here YES ($0.40) <= NO ($0.50).
+        self.assertEqual(result[0].side, "yes")
 
     def test_no_arb_when_prices_sum_above_1(self):
-        # YES ask=55 + NO ask=55 = $1.10 > $1 = no arb
-        market = make_market(yes_ask=55, no_ask=55, yes_bid=50, no_bid=50,
-                           last_price=53)
+        # YES ask $0.55 + NO ask $0.55 = $1.10 > $1 = no arb, tight spread,
+        # fair value near mid -> no edge above a 0.10 threshold either.
+        market = make_market(yes_ask=0.55, no_ask=0.55, yes_bid=0.52, no_bid=0.52,
+                             last_price=0.53)
         client = MockClient(markets=[market])
-        config = {**DEFAULT_CONFIG, "strategy": {**DEFAULT_CONFIG["strategy"], "min_edge": 0.10}}
-        scanner = MarketScanner(client, config)
+        config = {**DEFAULT_CONFIG,
+                  "strategy": {**DEFAULT_CONFIG["strategy"], "min_edge": 0.10}}
+        scanner = _make_scanner(client, config)
         result = scanner.scan()
-        # With tight spread and high min_edge, no opportunities
         self.assertEqual(len(result), 0)
 
     def test_edge_detection(self):
-        # Market says YES = 40 cents, but midpoint/last suggests 50 cents
-        # Edge = 0.50 - 0.40 = 0.10 (above min_edge of 0.05)
-        market = make_market(yes_bid=45, yes_ask=40, no_bid=50, no_ask=60,
-                           last_price=50, volume=500)
+        # YES ask is $0.40 but last trade / cross-implied fair value sits
+        # around $0.47, an edge above the 0.05 threshold on the YES side.
+        market = make_market(yes_bid=0.38, yes_ask=0.40, no_bid=0.55, no_ask=0.62,
+                             last_price=0.55, volume=500)
         client = MockClient(markets=[market])
-        scanner = MarketScanner(client, DEFAULT_CONFIG)
+        scanner = _make_scanner(client)
         result = scanner.scan()
-        # Should find YES side underpriced
         yes_opps = [o for o in result if o.side == "yes"]
-        if yes_opps:
-            self.assertGreater(yes_opps[0].edge, 0)
+        self.assertTrue(yes_opps, "expected an underpriced YES opportunity")
+        self.assertGreaterEqual(yes_opps[0].edge, DEFAULT_CONFIG["strategy"]["min_edge"])
 
 
 # ── Risk Manager Tests ─────────────────────────────────
@@ -149,6 +211,34 @@ class TestRiskManager(unittest.TestCase):
         rm.reset_daily()
         self.assertFalse(rm.halted)
         self.assertEqual(rm.daily_pnl, 0)
+
+    def test_update_bankroll_anchors_starting_bankroll(self):
+        # Config placeholder bankroll is 100, but the real account has $5,000.
+        # The first balance sync must re-anchor starting_bankroll to $5,000 so
+        # the stop-loss measures against the real account, not the placeholder.
+        rm = RiskManager(DEFAULT_CONFIG)
+        self.assertEqual(rm.starting_bankroll, 100)
+        rm.update_bankroll(500_000)  # cents -> $5,000
+        self.assertEqual(rm.bankroll, 5000)
+        self.assertEqual(rm.starting_bankroll, 5000)
+
+    def test_stop_loss_scales_with_real_balance(self):
+        # With a $5,000 real starting balance and 20% stop, a drop to $3,900
+        # (-22%) must halt; a drop to only $4,500 (-10%) must not.
+        rm = RiskManager(DEFAULT_CONFIG)
+        rm.update_bankroll(500_000)  # anchors starting_bankroll = $5,000
+        rm.bankroll = 4500
+        self.assertFalse(rm.check_halt())
+        rm.bankroll = 3900
+        self.assertTrue(rm.check_halt())
+
+    def test_starting_bankroll_only_anchors_once(self):
+        # Later balance syncs update bankroll but must NOT move the anchor.
+        rm = RiskManager(DEFAULT_CONFIG)
+        rm.update_bankroll(500_000)  # $5,000
+        rm.update_bankroll(300_000)  # $3,000 later
+        self.assertEqual(rm.bankroll, 3000)
+        self.assertEqual(rm.starting_bankroll, 5000)
 
 
 # ── Executor Tests ─────────────────────────────────────

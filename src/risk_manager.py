@@ -19,13 +19,23 @@ class RiskManager:
         self.daily_loss_limit = risk["daily_loss_limit"]
 
         self.starting_bankroll = self.bankroll
+        self._starting_bankroll_synced = False
         self.daily_pnl = 0.0
         self.open_positions = 0
         self.halted = False
 
     def update_bankroll(self, balance_cents: int):
-        """Update bankroll from actual account balance."""
+        """Update bankroll from the actual account balance.
+
+        The FIRST sync (at startup) also anchors ``starting_bankroll`` to the
+        real balance. Without this the stop-loss threshold stays pinned to the
+        config placeholder (e.g. $100) instead of the real account size, so a
+        "20% stop-loss" on a $1,000 account would not halt until a ~92% loss.
+        """
         self.bankroll = balance_cents / 100
+        if not self._starting_bankroll_synced:
+            self.starting_bankroll = self.bankroll
+            self._starting_bankroll_synced = True
 
     def check_halt(self) -> bool:
         """Check if we should stop trading."""

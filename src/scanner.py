@@ -139,7 +139,11 @@ class MarketScanner:
                             if ticker and ticker not in seen_tickers:
                                 seen_tickers.add(ticker)
                                 total_scanned += 1
-                                opp = self._evaluate_market(market)
+                                try:
+                                    opp = self._evaluate_market(market)
+                                except Exception as e:
+                                    logger.debug(f"Evaluate failed for {ticker}: {e}")
+                                    continue
                                 if opp:
                                     self._market_cache.append(market)
                                     opportunities.append(opp)
@@ -190,7 +194,11 @@ class MarketScanner:
                     if ticker and ticker not in seen_tickers:
                         seen_tickers.add(ticker)
                         total_scanned += 1
-                        opp = self._evaluate_market(market)
+                        try:
+                            opp = self._evaluate_market(market)
+                        except Exception as e:
+                            logger.debug(f"Evaluate failed for {ticker}: {e}")
+                            continue
                         if opp:
                             self._market_cache.append(market)
                             opportunities.append(opp)

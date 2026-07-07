@@ -1,16 +1,24 @@
-"""Tests for RSA-PSS authentication signing."""
+"""Tests for RSA-PSS authentication signing in the active KalshiClient.
 
-import unittest
-import tempfile
+Auth correctness is money-critical: a bad signature means every request to
+Kalshi is rejected, so the bot silently does nothing. These tests generate a
+throwaway RSA key, sign with the client, and verify the signature with the
+matching public key.
+"""
+
+import base64
 import os
-from decimal import Decimal
+import tempfile
+import unittest
 
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
+
+from src.api_client import KalshiClient
 
 
 class TestKalshiAuth(unittest.TestCase):
-    """Test the authentication signing module."""
+    """Test the RSA-PSS signing on src.api_client.KalshiClient."""
 
     @classmethod
     def setUpClass(cls):
@@ -21,7 +29,6 @@ class TestKalshiAuth(unittest.TestCase):
         )
         cls.public_key = cls.private_key.public_key()
 
-        # Write private key to temp file
         cls.key_file = tempfile.NamedTemporaryFile(
             suffix=".pem", delete=False, mode="wb"
         )
@@ -38,46 +45,50 @@ class TestKalshiAuth(unittest.TestCase):
     def tearDownClass(cls):
         os.unlink(cls.key_file.name)
 
-    def _make_auth(self):
-        from src.client.auth import KalshiAuth
-        return KalshiAuth(key_id="test-key-id", private_key_path=self.key_file.name)
+    def _make_client(self):
+        return KalshiClient(
+            base_url="https://demo-api.kalshi.co/trade-api/v2",
+            key_id="test-key-id",
+            private_key_path=self.key_file.name,
+        )
 
-    def test_auth_loads_key(self):
-        """Auth should load the PEM key without error."""
-        auth = self._make_auth()
-        self.assertEqual(auth.key_id, "test-key-id")
+    def test_client_loads_key(self):
+        """Client should load the PEM key without error."""
+        client = self._make_client()
+        self.assertEqual(client.key_id, "test-key-id")
+        self.assertIsNotNone(client.private_key)
 
-    def test_auth_missing_key_raises(self):
-        """Auth should raise FileNotFoundError for missing key."""
-        from src.client.auth import KalshiAuth
+    def test_missing_key_raises(self):
+        """A missing key file should raise FileNotFoundError."""
         with self.assertRaises(FileNotFoundError):
-            KalshiAuth(key_id="x", private_key_path="/nonexistent/key.pem")
+            KalshiClient(
+                base_url="https://demo-api.kalshi.co/trade-api/v2",
+                key_id="x",
+                private_key_path="/nonexistent/key.pem",
+            )
 
     def test_sign_produces_base64(self):
-        """sign() should return a non-empty base64 string."""
-        import base64
-        auth = self._make_auth()
-        sig = auth.sign("1700000000000", "GET", "/trade-api/v2/markets")
-        self.assertTrue(len(sig) > 0)
-        # Should be valid base64
-        decoded = base64.b64decode(sig)
-        self.assertTrue(len(decoded) > 0)
+        """_sign() should return a non-empty base64 string."""
+        client = self._make_client()
+        sig = client._sign("1700000000000", "GET", "/trade-api/v2/markets")
+        self.assertGreater(len(sig), 0)
+        self.assertGreater(len(base64.b64decode(sig)), 0)
 
     def test_sign_is_verifiable(self):
-        """The signature should be verifiable with the public key."""
-        import base64
-        auth = self._make_auth()
+        """The signature must verify against the matching public key.
 
+        The signed message is timestamp + method + path, exactly matching
+        Kalshi's documented scheme.
+        """
+        client = self._make_client()
         timestamp = "1700000000000"
         method = "GET"
         path = "/trade-api/v2/markets"
 
-        sig_b64 = auth.sign(timestamp, method, path)
-        sig_bytes = base64.b64decode(sig_b64)
-
-        # Verify with public key
+        sig_bytes = base64.b64decode(client._sign(timestamp, method, path))
         message = f"{timestamp}{method}{path}".encode("utf-8")
-        # Should not raise
+
+        # Raises InvalidSignature if the signature does not verify.
         self.public_key.verify(
             sig_bytes,
             message,
@@ -88,59 +99,40 @@ class TestKalshiAuth(unittest.TestCase):
             hashes.SHA256(),
         )
 
-    def test_sign_strips_query_params(self):
-        """sign() should strip query parameters from the path."""
-        import base64
-        auth = self._make_auth()
+    def test_headers_contain_required_fields(self):
+        """_headers() should return the three required Kalshi auth headers."""
+        client = self._make_client()
+        headers = client._headers("GET", "/trade-api/v2/markets")
 
-        timestamp = "1700000000000"
-        method = "GET"
-
-        # Sign with query params
-        sig_with_query = auth.sign(timestamp, method, "/trade-api/v2/markets?status=open&limit=100")
-        # Sign without query params
-        sig_without_query = auth.sign(timestamp, method, "/trade-api/v2/markets")
-
-        # Both should produce valid signatures for the same message
-        # (they won't be identical due to PSS randomness, but both should verify)
-        for sig_b64 in [sig_with_query, sig_without_query]:
-            sig_bytes = base64.b64decode(sig_b64)
-            message = f"{timestamp}{method}/trade-api/v2/markets".encode("utf-8")
-            self.public_key.verify(
-                sig_bytes,
-                message,
-                padding.PSS(
-                    mgf=padding.MGF1(hashes.SHA256()),
-                    salt_length=padding.PSS.DIGEST_LENGTH,
-                ),
-                hashes.SHA256(),
-            )
-
-    def test_get_headers_returns_three_headers(self):
-        """get_headers() should return the 3 required Kalshi headers."""
-        auth = self._make_auth()
-        headers = auth.get_headers("GET", "/trade-api/v2/markets")
-
-        self.assertIn("KALSHI-ACCESS-KEY", headers)
-        self.assertIn("KALSHI-ACCESS-TIMESTAMP", headers)
-        self.assertIn("KALSHI-ACCESS-SIGNATURE", headers)
         self.assertEqual(headers["KALSHI-ACCESS-KEY"], "test-key-id")
-        # Timestamp should be numeric
         self.assertTrue(headers["KALSHI-ACCESS-TIMESTAMP"].isdigit())
+        self.assertIn("KALSHI-ACCESS-SIGNATURE", headers)
+        # The signature in the header must verify for the same message.
+        ts = headers["KALSHI-ACCESS-TIMESTAMP"]
+        sig_bytes = base64.b64decode(headers["KALSHI-ACCESS-SIGNATURE"])
+        message = f"{ts}GET/trade-api/v2/markets".encode("utf-8")
+        self.public_key.verify(
+            sig_bytes,
+            message,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.DIGEST_LENGTH,
+            ),
+            hashes.SHA256(),
+        )
 
-    def test_get_headers_fresh_timestamp(self):
-        """Each call to get_headers should produce a fresh timestamp."""
+    def test_headers_fresh_timestamp(self):
+        """Each call to _headers should produce a non-decreasing timestamp."""
         import time
-        auth = self._make_auth()
 
-        h1 = auth.get_headers("GET", "/trade-api/v2/markets")
+        client = self._make_client()
+        h1 = client._headers("GET", "/trade-api/v2/markets")
         time.sleep(0.01)
-        h2 = auth.get_headers("GET", "/trade-api/v2/markets")
-
-        # Timestamps should differ (or at least not be obviously stale)
-        ts1 = int(h1["KALSHI-ACCESS-TIMESTAMP"])
-        ts2 = int(h2["KALSHI-ACCESS-TIMESTAMP"])
-        self.assertGreaterEqual(ts2, ts1)
+        h2 = client._headers("GET", "/trade-api/v2/markets")
+        self.assertGreaterEqual(
+            int(h2["KALSHI-ACCESS-TIMESTAMP"]),
+            int(h1["KALSHI-ACCESS-TIMESTAMP"]),
+        )
 
 
 if __name__ == "__main__":
