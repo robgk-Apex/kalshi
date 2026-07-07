@@ -1,0 +1,33 @@
+# Kalshi Trading Bot Configuration
+# Copy this to config.yaml and fill in your details
+
+api:
+  # Demo (fake money) - start here!
+  base_url: "https://demo-api.kalshi.co/trade-api/v2"
+  ws_url: "wss://demo-api.kalshi.co/trade-api/ws/v2"
+
+  # Production (real money) - switch to these when ready
+  # base_url: "https://api.elections.kalshi.com/trade-api/v2"
+  # ws_url: "wss://api.elections.kalshi.com/trade-api/ws/v2"
+
+  key_id: "YOUR_KEY_ID_HERE"
+  private_key_path: "keys/kalshi.pem"
+
+strategy:
+  min_edge: 0.05
+  scan_interval: 30
+  min_volume: 100
+  max_days_to_expiry: 30
+
+risk:
+  bankroll: 100
+  max_bet_pct: 0.05
+  max_contracts: 20
+  max_positions: 10
+  stop_loss_pct: 0.20
+  daily_loss_limit: 20
+
+logging:
+  level: "INFO"
+  file: "logs/bot.log"
+

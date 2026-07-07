@@ -1,0 +1,91 @@
+KALSHI TRADING BOT - SETUP GUIDE
+=================================
+
+STEP 1: Install Python
+-----------------------
+Download Python 3.12+ from https://www.python.org/downloads/
+During install CHECK "Add Python to PATH"
+
+STEP 2: Install dependencies
+-----------------------------
+Open Command Prompt and run:
+
+    cd kalshi-bot
+    pip install pyyaml requests
+
+STEP 3: Create Kalshi account
+-------------------------------
+1. Go to https://kalshi.com and sign up
+2. Verify your identity (required by law)
+3. Deposit money (USDC or bank transfer)
+
+STEP 4: Get API keys
+----------------------
+1. Log into Kalshi
+2. Click your profile picture (top right)
+3. Click Settings
+4. Click API Keys (left side)
+5. Click "Generate New Key"
+6. Set nickname to: trading-bot
+7. Select: Read/Write
+8. Click Create
+9. COPY the Key ID somewhere safe
+10. SAVE the downloaded .txt file (this is your private key - they only show it once!)
+
+STEP 5: Set up the bot
+------------------------
+1. Rename the downloaded key file to: kalshi.pem
+2. Put it in: kalshi-bot/keys/kalshi.pem
+3. Copy config/config.example.yaml to config/config.yaml
+4. Open config/config.yaml in Notepad
+5. Replace YOUR_KEY_ID_HERE with your Key ID from Step 4
+
+STEP 6: Run in safe mode (paper trading)
+------------------------------------------
+    cd kalshi-bot
+    python -m src --dry-run
+
+This scans real markets but trades FAKE money. No risk.
+You will see output like:
+    [DRY RUN] WOULD TRADE: buy 40x yes KXHIGHTDAL-26MAR29-B58 @ $0.13
+
+STEP 7: Go live (real money)
+------------------------------
+When ready:
+
+    python -m src --live-confirm
+
+THIS TRADES REAL MONEY. Make sure you:
+- Have money in your Kalshi account
+- Set your bankroll in config.yaml
+- Start small ($100-200) to test
+
+HOW TO STOP THE BOT
+---------------------
+Ctrl+C is disabled (so you can copy/paste without killing it)
+To stop, open another terminal and run:
+
+    echo. > C:\path\to\kalshi-bot\STOP
+
+SAFETY FEATURES
+-----------------
+- Max $250 per trade (hard cap)
+- Max 25 positions at once
+- Daily loss limit: bot halts if you lose too much
+- Stop loss: bot halts if bankroll drops 20%
+- Weather trades verified against NWS forecasts
+- Crypto trades require technical analysis approval
+- Duplicate order prevention (won't buy same market twice)
+
+WHAT THE BOT TRADES
+---------------------
+- Weather (highest win rate - checks real forecasts)
+- Sports (NBA, NFL, F1, NASCAR, soccer, esports)
+- Commodities (oil, gold, silver)
+- Politics (mentions, predictions)
+- Culture (Netflix rankings, Spotify, social media)
+- Crypto (only with technical analysis approval)
+
+QUESTIONS?
+-----------
+Ask Claude to help you set it up. Just show it this file.
