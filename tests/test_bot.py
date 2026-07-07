@@ -165,6 +165,68 @@ class TestScanner(unittest.TestCase):
         self.assertGreaterEqual(yes_opps[0].edge, DEFAULT_CONFIG["strategy"]["min_edge"])
 
 
+# ── Crypto-focus (mode: crypto_short) ──────────────────
+class SeriesAwareClient:
+    """Serves a crypto market only for directional series calls, and a
+    non-crypto market only for the general (Phase 2) scan, so tests can tell
+    whether crypto_short mode skipped everything but up/down crypto."""
+
+    def __init__(self, crypto_market, other_market):
+        self.crypto_market = crypto_market
+        self.other_market = other_market
+
+    def get_events(self, **kwargs):
+        series = kwargs.get("series_ticker")
+        if series == "KXBTCD":
+            return {"events": [{"markets": [self.crypto_market]}], "cursor": ""}
+        if series is None:  # Phase 2 general scan
+            return {"events": [{"markets": [self.other_market]}], "cursor": ""}
+        return {"events": [], "cursor": ""}
+
+    def get_markets(self, **kwargs):
+        return {"markets": [], "cursor": ""}
+
+
+CRYPTO_SHORT_CONFIG = {
+    "strategy": {"mode": "crypto_short", "min_edge": 0.05, "scan_interval": 30,
+                 "min_volume": 100, "max_hours_to_expiry": 2, "max_entry_price": 0.60},
+    "risk": DEFAULT_CONFIG["risk"],
+}
+
+
+class TestCryptoFocus(unittest.TestCase):
+
+    def _markets(self):
+        # Both are arbitrage markets (yes_ask + no_ask < 0.99) so they are
+        # detected without needing the (network-bound) analyzer gates.
+        crypto = make_market(ticker="KXBTCD-26JAN0112-T95000",
+                             yes_ask=0.40, no_ask=0.50, yes_bid=0.35, no_bid=0.45)
+        other = make_market(ticker="KXNFLGAME-26JAN01-KC",
+                            yes_ask=0.40, no_ask=0.50, yes_bid=0.35, no_bid=0.45)
+        return crypto, other
+
+    def test_crypto_short_scans_only_directional_crypto(self):
+        crypto, other = self._markets()
+        client = SeriesAwareClient(crypto, other)
+        scanner = _make_scanner(client, CRYPTO_SHORT_CONFIG)
+        tickers = {o.ticker for o in scanner.scan()}
+        self.assertIn("KXBTCD-26JAN0112-T95000", tickers)
+        self.assertNotIn("KXNFLGAME-26JAN01-KC", tickers)
+
+    def test_crypto_short_uses_directional_series_list(self):
+        scanner = _make_scanner(SeriesAwareClient(*self._markets()), CRYPTO_SHORT_CONFIG)
+        # Only the *D (up/down) series, no range series like plain "KXBTC".
+        self.assertIn("KXBTCD", scanner.crypto_series)
+        self.assertNotIn("KXBTC", scanner.crypto_series)
+
+    def test_all_mode_still_scans_other_markets(self):
+        crypto, other = self._markets()
+        client = SeriesAwareClient(crypto, other)
+        scanner = _make_scanner(client, DEFAULT_CONFIG)  # mode defaults to "all"
+        tickers = {o.ticker for o in scanner.scan()}
+        self.assertIn("KXNFLGAME-26JAN01-KC", tickers)
+
+
 # ── Risk Manager Tests ─────────────────────────────────
 class TestRiskManager(unittest.TestCase):
 

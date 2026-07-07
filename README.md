@@ -1,0 +1,64 @@
+# Kalshi Trading Bot
+
+A bot that scans Kalshi markets and places limit orders on detected mispricings.
+It now focuses on **short-term "up/down" crypto** markets (BTC/ETH/SOL/… hourly
+directional contracts).
+
+New here? Start with [`SETUP.txt`](SETUP.txt).
+
+## Run modes
+
+```bash
+python -m src --dry-run        # paper trade against REAL Kalshi data (needs API keys)
+python -m src --live-confirm   # LIVE — real money
+```
+
+`--dry-run` scans real markets and logs the trades it *would* make without
+placing any orders. It needs a working Kalshi connection (API key + network),
+so run it from your own machine — see `SETUP.txt`.
+
+## Paper-trade simulation (no keys, no network)
+
+To see the whole pipeline (scan → size → execute → settle → P&L) without a
+Kalshi connection, run the offline simulator. It drives the *actual* bot
+components over synthetic-but-realistic up/down crypto markets:
+
+```bash
+python scripts/paper_sim.py --scenario mixed --cycles 300
+python scripts/paper_sim.py --scenario informed   # a real price signal -> profits
+python scripts/paper_sim.py --scenario noise       # a meaningless signal -> loses
+python scripts/paper_sim.py --scenario efficient   # no signal -> bot sits out
+```
+
+**What it teaches:** for crypto this bot has no external fair-value model — it
+trades when the *last* trade price diverges from the current bid/ask. So it only
+makes money if that divergence is informative. The `noise` scenario (divergence
+unrelated to the outcome) *loses ~20%*, which is the honest risk of the
+heuristic. Synthetic markets are a controlled model, **not** a prediction of
+live Kalshi behavior — always `--dry-run` against real data before going live.
+
+## Focus mode
+
+`config/config.yaml` selects what gets scanned:
+
+```yaml
+strategy:
+  mode: crypto_short        # only short-term up/down crypto (default)
+  # mode: all               # crypto + every other market (original behavior)
+  max_hours_to_expiry: 2    # ignore anything settling further out
+```
+
+## Safety
+
+Read [`docs/SAFETY_REVIEW.md`](docs/SAFETY_REVIEW.md) before trading real money.
+It documents the money-safety review, the fixes already applied (stop-loss
+anchoring, restart position sync, scan robustness), and the open issues that
+still need decisions (the live daily-loss limit and the single-leg "arbitrage"
+branch).
+
+## Tests
+
+```bash
+pip install -r requirements.txt pytest
+python -m pytest -q
+```

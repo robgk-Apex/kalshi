@@ -66,6 +66,17 @@ class MarketScanner:
         self.max_entry_price = config["strategy"].get("max_entry_price", 1.0)
         self.external_odds = external_odds
 
+        # Focus mode. "crypto_short" scans ONLY short-term up/down crypto
+        # (the directional *D series) and skips every other market. "all"
+        # keeps the original behavior (crypto + all other events).
+        self.mode = config["strategy"].get("mode", "all")
+        # Which crypto series to scan (override the defaults from config if set).
+        self.crypto_series = (
+            config["strategy"].get("crypto_series")
+            or (self.DIRECTIONAL_CRYPTO_SERIES
+                if self.mode == "crypto_short" else self.CRYPTO_SERIES)
+        )
+
         # Crypto analyzer - real price/trend/momentum analysis
         try:
             from .crypto_analyzer import CryptoAnalyzer
@@ -107,6 +118,19 @@ class MarketScanner:
         "KXHYPE", "KXHYPED",     # Hype
     ]
 
+    # Short-term "up/down" crypto only: the directional (*D) series. These are
+    # the intraday markets that ask whether a coin will be up or down at the
+    # settlement time, which is what `mode: crypto_short` targets.
+    DIRECTIONAL_CRYPTO_SERIES = [
+        "KXBTCD",   # Bitcoin up/down
+        "KXETHD",   # Ethereum up/down
+        "KXSOLD",   # Solana up/down
+        "KXXRPD",   # XRP up/down
+        "KXDOGED",  # Dogecoin up/down
+        "KXBNBD",   # BNB up/down
+        "KXHYPED",  # Hype up/down
+    ]
+
     # Crypto tickers that need CryptoAnalyzer approval before trading
     CRYPTO_TICKERS = (
         "KXBTC", "KXBTCD", "KXETH", "KXETHD", "KXSOL", "KXSOLD",
@@ -122,7 +146,7 @@ class MarketScanner:
         self._market_cache = []
 
         # ── Phase 1: Scan crypto hourly/15-min series directly ──
-        for series in self.CRYPTO_SERIES:
+        for series in self.crypto_series:
             try:
                 cursor_s = None
                 for _ in range(5):  # up to 5 pages per series
@@ -154,6 +178,15 @@ class MarketScanner:
                 logger.debug(f"Crypto series {series}: {e}")
 
         logger.info(f"  ...crypto scan: {total_scanned} markets, {len(opportunities)} opportunities")
+
+        # In crypto-only mode, stop here — do not scan any other markets.
+        if self.mode == "crypto_short":
+            self._sort_by_soonest_then_edge(opportunities)
+            logger.info(
+                f"Scan complete (crypto_short): {len(opportunities)} up/down crypto "
+                f"opportunities"
+            )
+            return opportunities
 
         # ── Phase 2: Scan all other events (sports, weather, politics, etc.) ──
         cursor = None
@@ -209,8 +242,15 @@ class MarketScanner:
             if not cursor or not events:
                 break
 
-        # Sort by: soonest settlement first, then by edge within same timeframe
-        # This maximizes turnover speed for faster compounding
+        self._sort_by_soonest_then_edge(opportunities)
+        logger.info(f"Scan complete: {len(opportunities)} opportunities found")
+        return opportunities
+
+    def _sort_by_soonest_then_edge(self, opportunities):
+        """Sort in place: soonest settlement first, then by largest edge.
+
+        This maximizes turnover speed for faster compounding.
+        """
         for opp in opportunities:
             # Attach hours to expiry for sorting
             for market_data in self._market_cache:
@@ -223,10 +263,7 @@ class MarketScanner:
             else:
                 opp._hours_left = 9999
 
-        # Primary: soonest expiry. Secondary: highest edge.
         opportunities.sort(key=lambda o: (o._hours_left, -abs(o.edge)))
-        logger.info(f"Scan complete: {len(opportunities)} opportunities found")
-        return opportunities
 
     def _evaluate_market(self, market: dict) -> Optional[Opportunity]:
         """Check a single market for mispricing."""

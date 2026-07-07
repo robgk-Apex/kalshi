@@ -14,10 +14,23 @@ api:
   private_key_path: "keys/kalshi.pem"
 
 strategy:
+  # Focus mode:
+  #   crypto_short = ONLY short-term up/down crypto (KXBTCD, KXETHD, ...)
+  #   all          = crypto + every other market (the original behavior)
+  mode: crypto_short
+
   min_edge: 0.05
   scan_interval: 30
   min_volume: 100
-  max_days_to_expiry: 30
+
+  # Short-term only: ignore any market that settles more than this many hours out.
+  max_hours_to_expiry: 2
+  # Don't pay more than this per contract (leaves room for payout on up/down bets).
+  max_entry_price: 0.60
+
+  # Which up/down crypto series to scan. Comment out to use the built-in
+  # directional default (BTC/ETH/SOL/XRP/DOGE/BNB/HYPE).
+  # crypto_series: ["KXBTCD", "KXETHD", "KXSOLD"]
 
 risk:
   bankroll: 100
