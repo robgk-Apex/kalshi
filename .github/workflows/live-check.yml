@@ -9,6 +9,7 @@ on:
     paths:
       - "scripts/live_check.py"
       - "scripts/export_snapshot.py"
+      - "scripts/discover_series.py"
       - ".github/workflows/live-check.yml"
 
 jobs:
@@ -22,5 +23,7 @@ jobs:
       - run: pip install --quiet cryptography requests pyyaml
       - name: Pull real Kalshi up/down crypto markets
         run: python scripts/live_check.py
+      - name: Discover crypto series + cadences
+        run: python scripts/discover_series.py
       - name: Export a real market snapshot
         run: python scripts/export_snapshot.py
