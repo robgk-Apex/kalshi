@@ -10,10 +10,13 @@ then tracks it and shows an active P&L that updates as your positions settle to
 wins ($1/contract) or losses ($0). Your ledger is kept server-side in
 logs/dashboard_ledger.json.
 
-    # LIVE — real Kalshi data (needs your API keys + network to Kalshi)
+    # LIVE (public) — REAL Kalshi market data, no account or keys needed
+    python scripts/dashboard.py --live
+
+    # LIVE (authenticated) — also shows your account balance
     python scripts/dashboard.py --config config/config.yaml
 
-    # DEMO — synthetic data, no network or keys (for previewing the screen)
+    # DEMO — synthetic data, no network (a preview of the screen)
     python scripts/dashboard.py --demo
 
 Then open http://localhost:8787 in your browser.
@@ -186,15 +189,8 @@ class LiveProvider:
     signals. Results are cached for `min_interval` seconds so rapid browser
     polling doesn't hammer the API."""
 
-    def __init__(self, config_path, min_interval=1.0):
-        import yaml
-        from src.api_client import KalshiClient
-
-        with open(config_path) as f:
-            config = yaml.safe_load(f)
-        api = config["api"]
-        self.client = KalshiClient(api["base_url"], api["key_id"],
-                                   api["private_key_path"])
+    def __init__(self, client, min_interval=1.0):
+        self.client = client
         self.scanner = _gate_free_scanner(self.client)
         self.ledger = Ledger()
         try:
@@ -220,11 +216,12 @@ class LiveProvider:
 
     def _fetch(self):
         rows, error, balance = [], None, None
-        try:
-            bal = self.client.get_balance()
-            balance = bal.get("balance", 0) / 100
-        except Exception as e:
-            error = f"balance: {e}"
+        if getattr(self.client, "authed", False):
+            try:
+                bal = self.client.get_balance()
+                balance = bal.get("balance", 0) / 100
+            except Exception as e:
+                error = f"balance: {e}"
 
         seen = set()
         for series in self.scanner.crypto_series:
@@ -479,13 +476,56 @@ def make_handler(provider, refresh):
     return Handler
 
 
+PROD_BASE = "https://api.elections.kalshi.com/trade-api/v2"
+
+
+def build_live_provider(args):
+    """Build a LiveProvider that pulls REAL Kalshi data.
+
+    Priority: --config file, else env vars, else public (no-auth) live mode.
+    Public mode needs no account/keys — it reads Kalshi's public market data,
+    which is all the read-only board requires. Auth (config/env keys) adds the
+    account balance tile.
+    """
+    from src.api_client import KalshiClient
+    base = args.base_url or os.environ.get("KALSHI_BASE_URL") or PROD_BASE
+
+    if args.config and os.path.exists(args.config):
+        import yaml
+        with open(args.config) as f:
+            api = yaml.safe_load(f)["api"]
+        client = KalshiClient(api["base_url"], api.get("key_id"),
+                              api.get("private_key_path"))
+        print(f"[dashboard] LIVE (authenticated via {args.config}) — real Kalshi data")
+        return LiveProvider(client, min_interval=args.refresh)
+
+    key_id = os.environ.get("KALSHI_KEY_ID")
+    key_path = os.environ.get("KALSHI_PRIVATE_KEY_PATH")
+    if os.environ.get("KALSHI_PRIVATE_KEY") and not key_path:
+        key_path = os.path.join("logs", "_kalshi_env.pem")
+        with open(key_path, "w") as f:
+            f.write(os.environ["KALSHI_PRIVATE_KEY"])
+    if key_id and key_path:
+        client = KalshiClient(base, key_id, key_path)
+        print("[dashboard] LIVE (authenticated via env) — real Kalshi data")
+    else:
+        client = KalshiClient(base)  # public, no auth
+        print(f"[dashboard] LIVE (public, no keys) — real Kalshi data from {base}")
+    return LiveProvider(client, min_interval=args.refresh)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Live crypto up/down dashboard")
-    parser.add_argument("--config", default="config/config.yaml")
+    parser.add_argument("--live", action="store_true",
+                        help="Pull REAL Kalshi public data (no keys needed)")
+    parser.add_argument("--config", default=None,
+                        help="Authenticated live mode from a config.yaml")
     parser.add_argument("--demo", action="store_true",
-                        help="Use synthetic data (no network/keys)")
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8787)
+                        help="Synthetic data (no network/keys) — a preview")
+    parser.add_argument("--base-url", default=None,
+                        help=f"Kalshi API base (default {PROD_BASE})")
+    parser.add_argument("--host", default=os.environ.get("HOST", "127.0.0.1"))
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8787)))
     parser.add_argument("--refresh", type=float, default=1.0,
                         help="Browser refresh interval in seconds (default 1)")
     args = parser.parse_args()
@@ -494,17 +534,19 @@ def main():
     if args.demo:
         provider = DemoProvider()
         print("[dashboard] DEMO mode — synthetic data, no Kalshi connection")
+    elif args.live or args.config or args.base_url or os.environ.get("KALSHI_KEY_ID"):
+        provider = build_live_provider(args)
     else:
-        if not os.path.exists(args.config):
-            print(f"Config not found: {args.config}. Use --demo to preview "
-                  f"without keys, or copy config/config.example.yaml.")
-            sys.exit(1)
-        provider = LiveProvider(args.config, min_interval=args.refresh)
-        print("[dashboard] LIVE mode — pulling real Kalshi markets")
+        print("Pick a data source:")
+        print("  --live                     real Kalshi public data (no keys)")
+        print("  --config config/config.yaml  authenticated (adds your balance)")
+        print("  --demo                     synthetic preview")
+        sys.exit(1)
 
     server = ThreadingHTTPServer((args.host, args.port),
                                  make_handler(provider, args.refresh))
-    print(f"[dashboard] open http://{args.host}:{args.port}  (Ctrl+C to stop)")
+    shown = "localhost" if args.host in ("127.0.0.1", "0.0.0.0") else args.host
+    print(f"[dashboard] open http://{shown}:{args.port}  (Ctrl+C to stop)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

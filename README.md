@@ -44,9 +44,14 @@ in your browser with YES/NO books, live settlement countdowns, and the bot's
 detected signals:
 
 ```bash
-python scripts/dashboard.py --config config/config.yaml   # LIVE Kalshi data
-python scripts/dashboard.py --demo                         # synthetic, no keys
+python scripts/dashboard.py --live                         # REAL Kalshi data, no keys
+python scripts/dashboard.py --config config/config.yaml    # authenticated (adds balance)
+python scripts/dashboard.py --demo                         # synthetic preview, no network
 ```
+
+`--live` reads Kalshi's **public** market data — no account or keys needed — so
+it's the quickest way to see real up/down crypto markets. Add keys only for the
+account-balance tile.
 
 Then open <http://localhost:8787>. Live mode needs your API keys and a network
 that can reach Kalshi; use `--demo` anywhere else to preview the screen.
@@ -79,6 +84,26 @@ pays $0.
 markets closing in **15 min / 30 min / 1 hour** (or All). Realized P&L counts only settled trades; open positions are marked to
 the current price as unrealized. (Settlement outcomes come from Kalshi, so
 realized P&L advances in LIVE mode; in `--demo` trades stay open.)
+
+## Deploy it as a real web app
+
+A browser sandbox (like a hosted preview) can't call Kalshi directly, so a live
+web app needs this Python service running server-side. It's containerized:
+
+```bash
+docker build -t kalshi-dashboard .
+docker run -p 8787:8787 kalshi-dashboard        # public real data, no keys
+# authenticated (adds your balance):
+docker run -p 8787:8787 \
+  -e KALSHI_KEY_ID=your_key_id \
+  -e KALSHI_PRIVATE_KEY="$(cat keys/kalshi.pem)" \
+  kalshi-dashboard
+```
+
+`HOST`/`PORT` and `KALSHI_KEY_ID` / `KALSHI_PRIVATE_KEY[_PATH]` /
+`KALSHI_BASE_URL` are read from the environment, so it runs as-is on Render,
+Fly.io, Railway, a VPS, etc. The host just needs to reach
+`api.elections.kalshi.com`.
 
 ## Focus mode
 

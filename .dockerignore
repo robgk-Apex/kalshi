@@ -1,0 +1,9 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+logs
+keys/*.pem
+config/config.yaml
+.pytest_cache

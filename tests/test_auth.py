@@ -67,6 +67,16 @@ class TestKalshiAuth(unittest.TestCase):
                 private_key_path="/nonexistent/key.pem",
             )
 
+    def test_public_client_is_unauthenticated(self):
+        """With no key at all, the client is unauthenticated and sends no
+        KALSHI-ACCESS-* headers (fine for public market data)."""
+        client = KalshiClient(base_url="https://api.elections.kalshi.com/trade-api/v2")
+        self.assertFalse(client.authed)
+        headers = client._headers("GET", "/trade-api/v2/markets")
+        self.assertNotIn("KALSHI-ACCESS-KEY", headers)
+        self.assertNotIn("KALSHI-ACCESS-SIGNATURE", headers)
+        self.assertEqual(headers["Accept"], "application/json")
+
     def test_sign_produces_base64(self):
         """_sign() should return a non-empty base64 string."""
         client = self._make_client()

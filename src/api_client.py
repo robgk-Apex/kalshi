@@ -10,10 +10,20 @@ from cryptography.hazmat.primitives.asymmetric import padding
 class KalshiClient:
     """Handles all communication with the Kalshi API."""
 
-    def __init__(self, base_url: str, key_id: str, private_key_path: str):
+    def __init__(self, base_url: str, key_id: str = None,
+                 private_key_path: str = None):
+        """If key_id/private_key_path are given, requests are signed
+        (needed for balances/positions/orders). If BOTH are omitted, the client
+        runs unauthenticated — fine for public market data (GET /markets,
+        /events), which is all the read-only dashboard needs."""
         self.base_url = base_url.rstrip("/")
         self.key_id = key_id
-        self.private_key = self._load_key(private_key_path)
+        if key_id or private_key_path:
+            # Auth explicitly requested — load the key (raises if the file is missing).
+            self.private_key = self._load_key(private_key_path)
+        else:
+            self.private_key = None
+        self.authed = self.private_key is not None
         self.session = requests.Session()
 
     def _load_key(self, path: str):
@@ -33,15 +43,13 @@ class KalshiClient:
         return base64.b64encode(signature).decode()
 
     def _headers(self, method: str, path: str) -> dict:
-        ts = str(int(time.time() * 1000))
-        sig = self._sign(ts, method, path)
-        return {
-            "KALSHI-ACCESS-KEY": self.key_id,
-            "KALSHI-ACCESS-TIMESTAMP": ts,
-            "KALSHI-ACCESS-SIGNATURE": sig,
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+        if self.authed:
+            ts = str(int(time.time() * 1000))
+            headers["KALSHI-ACCESS-KEY"] = self.key_id
+            headers["KALSHI-ACCESS-TIMESTAMP"] = ts
+            headers["KALSHI-ACCESS-SIGNATURE"] = self._sign(ts, method, path)
+        return headers
 
     def _request(self, method: str, path: str, params=None, json_body=None):
         url = f"{self.base_url}{path}"
