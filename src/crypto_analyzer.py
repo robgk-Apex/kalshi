@@ -18,8 +18,14 @@ from typing import Optional, Dict, Tuple
 
 logger = logging.getLogger("kalshi-bot.crypto")
 
-# Free API - no key needed, 30 calls/min
-CRYPTO_API_BASE = "https://min-api.cryptocompare.com/data"
+# Coinbase public API — no key required.
+COINBASE_SPOT = "https://api.coinbase.com/v2/prices"
+COINBASE_CANDLES = "https://api.exchange.coinbase.com/products"
+# Kalshi coin id -> Coinbase product.
+COINBASE_PRODUCT = {
+    "BTC": "BTC-USD", "ETH": "ETH-USD", "SOL": "SOL-USD",
+    "XRP": "XRP-USD", "DOGE": "DOGE-USD", "BNB": "BNB-USD", "HYPE": "HYPE-USD",
+}
 
 # Map Kalshi ticker prefixes to CryptoCompare symbols
 COIN_MAP = {
@@ -49,7 +55,7 @@ class CryptoAnalyzer:
         self._cache_ttl = 120  # seconds - cache prices longer to avoid rate limits
         self._history_ttl = 120  # seconds
         self._last_request = 0
-        self._min_request_gap = 6  # seconds between API calls - CoinGecko free tier is strict
+        self._min_request_gap = 0.3  # Coinbase public API is generous
 
     def should_trade(self, ticker: str, side: str, strike: float,
                      hours_to_settle: float, ask_price: float) -> Tuple[bool, str]:
@@ -300,16 +306,16 @@ class CryptoAnalyzer:
         return True  # Default
 
     def _get_price(self, coin_id: str) -> Optional[float]:
-        """Get current price from CoinGecko with caching."""
+        """Current spot price from Coinbase (public, no key), with caching."""
         now = time.time()
-
-        # Check cache
         if coin_id in self._price_cache:
             price, cached_at = self._price_cache[coin_id]
             if now - cached_at < self._cache_ttl:
                 return price
 
-        # Rate limit
+        product = COINBASE_PRODUCT.get(coin_id)
+        if not product:
+            return None
         if now - self._last_request < self._min_request_gap:
             time.sleep(self._min_request_gap - (now - self._last_request))
 
@@ -317,58 +323,50 @@ class CryptoAnalyzer:
             import urllib.request
             import json
 
-            url = f"{CRYPTO_API_BASE}/price?fsym={coin_id}&tsyms=USD"
+            url = f"{COINBASE_SPOT}/{product}/spot"
             self._last_request = time.time()
-
             req = urllib.request.Request(url, headers={"Accept": "application/json"})
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read().decode())
-                price = data.get("USD")
-                if price:
-                    self._price_cache[coin_id] = (price, time.time())
-                    return price
+                price = float(data["data"]["amount"])
+                self._price_cache[coin_id] = (price, time.time())
+                return price
         except Exception as e:
             logger.warning(f"[CRYPTO] Price fetch failed for {coin_id}: {e}")
-
         return None
 
     def _get_history(self, coin_id: str) -> Optional[list]:
-        """Get 24h price history from CoinPaprika."""
-        now = time.time()
+        """Recent price history from Coinbase 5-min candles (public, no key).
 
-        # Check cache
+        Returns [[ts_ms, close], ...] oldest-first, matching the old format."""
+        now = time.time()
         if coin_id in self._history_cache:
             history, cached_at = self._history_cache[coin_id]
             if now - cached_at < self._history_ttl:
                 return history
 
-        # Rate limit
+        product = COINBASE_PRODUCT.get(coin_id)
+        if not product:
+            return None
         if now - self._last_request < self._min_request_gap:
             time.sleep(self._min_request_gap - (now - self._last_request))
 
         try:
             import urllib.request
             import json
-            from datetime import datetime, timezone, timedelta
 
-            # CryptoCompare: get hourly data for last 24h
-            url = f"{CRYPTO_API_BASE}/histohour?fsym={coin_id}&tsym=USD&limit=24"
+            # Coinbase candles: [ time, low, high, open, close, volume ], newest-first.
+            url = f"{COINBASE_CANDLES}/{product}/candles?granularity=300"
             self._last_request = time.time()
-
-            req = urllib.request.Request(url, headers={"Accept": "application/json"})
+            req = urllib.request.Request(url, headers={
+                "Accept": "application/json", "User-Agent": "kalshi-dashboard"})
             with urllib.request.urlopen(req, timeout=10) as resp:
-                data = json.loads(resp.read().decode())
-                candles = data.get("Data", [])
-                prices = []
-                for c in candles:
-                    ts = c.get("time", 0)
-                    close = c.get("close", 0)
-                    if ts and close:
-                        prices.append([ts * 1000, close])
+                candles = json.loads(resp.read().decode())
+                prices = [[int(c[0]) * 1000, float(c[4])]
+                          for c in reversed(candles) if len(c) >= 5]
                 if prices:
                     self._history_cache[coin_id] = (prices, time.time())
                     return prices
         except Exception as e:
             logger.warning(f"[CRYPTO] History fetch failed for {coin_id}: {e}")
-
         return None

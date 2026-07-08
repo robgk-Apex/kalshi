@@ -67,7 +67,10 @@ def main():
             hist_cache[coin] = series
         return hist_cache[coin], strike
 
-    raw = []
+    # Pick near-the-money, actually-tradeable markets across ALL coins (not the
+    # deep in/out-of-the-money strikes that sit at $0.00 / $1.00).
+    per_coin = max(4, MAX_ROWS // len(SERIES))
+    selected = []
     for coin, series in SERIES:
         try:
             resp = client.get_events(series_ticker=series, limit=200,
@@ -75,18 +78,24 @@ def main():
         except Exception as e:
             print(f"  {series}: ERROR {e}")
             continue
+        cand = []
         for ev in resp.get("events", []):
             for m in ev.get("markets", []):
                 t = m.get("ticker", "")
                 if not t:
                     continue
+                ya = f(m, "yes_ask_dollars", "yes_ask")
+                if not (0.08 <= ya <= 0.92):  # skip near-certain strikes
+                    continue
                 hrs = hours_until(m.get("expected_expiration_time") or m.get("close_time"))
-                raw.append((hrs, coin, series, m))
-    raw.sort(key=lambda x: x[0])
-    near = raw[:MAX_ROWS]
+                cand.append((hrs, abs(ya - 0.5), coin, series, m))
+        # soonest to settle, then closest to a coin-flip (most interesting)
+        cand.sort(key=lambda x: (x[0], x[1]))
+        selected.extend(cand[:per_coin])
+    selected.sort(key=lambda x: x[0])
 
     rows = []
-    for hrs, coin, series, m in near:
+    for hrs, _mid, coin, series, m in selected[:MAX_ROWS]:
         ya = f(m, "yes_ask_dollars", "yes_ask")
         yb = f(m, "yes_bid_dollars", "yes_bid")
         na = f(m, "no_ask_dollars", "no_ask")
