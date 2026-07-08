@@ -118,17 +118,13 @@ class MarketScanner:
         "KXHYPE", "KXHYPED",     # Hype
     ]
 
-    # Short-term "up/down" crypto only: the directional (*D) series. These are
-    # the intraday markets that ask whether a coin will be up or down at the
-    # settlement time, which is what `mode: crypto_short` targets.
+    # Short-term "up/down" crypto: the 15-minute (*15M) and hourly (*D) series.
+    # (Confirmed via Kalshi's /series: KXBTC15M etc. are frequency=fifteen_min;
+    # KXBTCD etc. are the hourly directional markets.) `mode: crypto_short`
+    # scans these; the dashboard groups them into 15m / hourly / daily / weekly.
     DIRECTIONAL_CRYPTO_SERIES = [
-        "KXBTCD",   # Bitcoin up/down
-        "KXETHD",   # Ethereum up/down
-        "KXSOLD",   # Solana up/down
-        "KXXRPD",   # XRP up/down
-        "KXDOGED",  # Dogecoin up/down
-        "KXBNBD",   # BNB up/down
-        "KXHYPED",  # Hype up/down
+        "KXBTC15M", "KXETH15M", "KXSOL15M", "KXXRP15M", "KXDOGE15M",  # 15-min up/down
+        "KXBTCD", "KXETHD", "KXSOLD", "KXXRPD", "KXDOGED",            # hourly up/down
     ]
 
     # Crypto tickers that need CryptoAnalyzer approval before trading

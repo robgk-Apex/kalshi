@@ -224,7 +224,9 @@ class LiveProvider:
                 error = f"balance: {e}"
 
         seen = set()
-        for series in self.scanner.crypto_series:
+        for si, series in enumerate(self.scanner.crypto_series):
+            if si:
+                time.sleep(0.25)  # throttle: Kalshi's public API rate-limits bursts
             cursor = None
             for _page in range(6):  # page through all open strikes for the series
                 try:
@@ -692,7 +694,9 @@ function tick(){document.querySelectorAll('tr[data-t]').forEach(tr=>{const t=tr.
 setInterval(tick,1000);
 
 let CAD="all";  // Kalshi crypto up/down cadences: 15m / hourly / daily / weekly
-const cadence=hl=>hl<=0.4?"15m":hl<=3?"hourly":hl<=48?"daily":"weekly";
+// 15-min markets come from the *15M series; the hourly (*D) series lists this
+// hour's window plus future ones, so split those by time.
+const cadence=r=>/15M/.test(r.ticker)?"15m":(r.hours_left<=1.5?"hourly":r.hours_left<=48?"daily":"weekly");
 async function take(ticker,side,price){
   const def=localStorage.getItem('kalshi_amt')||'25';
   const inp=prompt('How much did you put in on '+side.toUpperCase()+' @ $'+price.toFixed(2)+' per contract?  ($)', def);
@@ -722,7 +726,7 @@ async function load(){
   const L=d.ledger;
   // Stable order by ticker so rows keep their position and only the numbers /
   // prediction update — they don't jump around as countdowns/edges change.
-  const rows=(d.rows||[]).filter(r=>CAD==="all"||cadence(r.hours_left)===CAD)
+  const rows=(d.rows||[]).filter(r=>CAD==="all"||cadence(r)===CAD)
     .sort((a,b)=>a.ticker<b.ticker?-1:(a.ticker>b.ticker?1:0));
   const held=new Set((L&&L.open||[]).map(p=>p.ticker));
   const sigs=rows.filter(r=>r.rec&&r.rec.action!=='HOLD');

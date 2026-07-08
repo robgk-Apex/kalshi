@@ -21,9 +21,5 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install --quiet cryptography requests pyyaml
-      - name: Pull real Kalshi up/down crypto markets
-        run: python scripts/live_check.py
-      - name: Discover crypto series + cadences
-        run: python scripts/discover_series.py
-      - name: Export a real market snapshot
+      - name: Export a real market snapshot (15-min + hourly)
         run: python scripts/export_snapshot.py

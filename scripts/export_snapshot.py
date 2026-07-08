@@ -8,6 +8,7 @@ viewable board. Public — no keys.
 import json
 import os
 import sys
+import time
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -16,9 +17,15 @@ from src.api_client import KalshiClient
 from src.signals import indicators_from_series, recommend
 
 BASE = os.environ.get("KALSHI_BASE_URL", "https://api.elections.kalshi.com/trade-api/v2")
-SERIES = [("BTC", "KXBTCD"), ("ETH", "KXETHD"), ("SOL", "KXSOLD"),
-          ("XRP", "KXXRPD"), ("DOGE", "KXDOGED")]
-MAX_ROWS = 45
+SERIES = [
+    # 15-minute up/down (frequency=fifteen_min)
+    ("BTC", "KXBTC15M"), ("ETH", "KXETH15M"), ("SOL", "KXSOL15M"),
+    ("XRP", "KXXRP15M"), ("DOGE", "KXDOGE15M"),
+    # hourly up/down (also lists near-term daily/weekly windows)
+    ("BTC", "KXBTCD"), ("ETH", "KXETHD"), ("SOL", "KXSOLD"),
+    ("XRP", "KXXRPD"), ("DOGE", "KXDOGED"),
+]
+MAX_ROWS = 60
 
 
 def f(m, *names):
@@ -71,7 +78,9 @@ def main():
     # deep in/out-of-the-money strikes that sit at $0.00 / $1.00).
     per_coin = max(4, MAX_ROWS // len(SERIES))
     selected = []
-    for coin, series in SERIES:
+    for i, (coin, series) in enumerate(SERIES):
+        if i:
+            time.sleep(0.4)  # throttle: Kalshi's public API rate-limits bursts
         try:
             resp = client.get_events(series_ticker=series, limit=200,
                                      with_nested_markets=True, status="open")
