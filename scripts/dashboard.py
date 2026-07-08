@@ -657,7 +657,10 @@ async function load(){
   document.getElementById('upd').textContent=new Date(d.updated).toLocaleTimeString();
 
   const L=d.ledger;
-  const rows=(d.rows||[]).filter(r=>(r.hours_left*60)<=FILTER+0.001);
+  // Stable order by ticker so rows keep their position and only the numbers /
+  // prediction update — they don't jump around as countdowns/edges change.
+  const rows=(d.rows||[]).filter(r=>(r.hours_left*60)<=FILTER+0.001)
+    .sort((a,b)=>a.ticker<b.ticker?-1:(a.ticker>b.ticker?1:0));
   const held=new Set((L&&L.open||[]).map(p=>p.ticker));
   const sigs=rows.filter(r=>r.rec&&r.rec.action!=='HOLD');
   document.getElementById('s-count').textContent=rows.length;
