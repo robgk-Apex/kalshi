@@ -51,6 +51,14 @@ python scripts/dashboard.py --demo                         # synthetic, no keys
 Then open <http://localhost:8787>. Live mode needs your API keys and a network
 that can reach Kalshi; use `--demo` anywhere else to preview the screen.
 
+**Educated buy/sell suggestions.** Each market shows a **BUY YES / BUY NO /
+HOLD** recommendation with a confidence score and its reasons (hover it). It's
+built by `src/signals.py` from real technical indicators — trend (moving
+averages), momentum, distance to the strike, volatility, and time to settle —
+plus the book's own edge. In LIVE mode the indicators come from real crypto
+prices (via `crypto_analyzer.py`). It's a transparent, explainable read of price
+action, **not** a guarantee — hourly up/down crypto is close to a coin flip.
+
 **Track your trades.** Click **Take** on any market to log a trade you made. The
 dashboard keeps a ledger (`logs/dashboard_ledger.json`) and shows an **active
 P&L** that updates as your positions settle — a win pays $1/contract, a loss

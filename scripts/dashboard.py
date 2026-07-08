@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import os
 import random
 import sys
@@ -41,6 +40,32 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import src.paper_trader as paper_trader_module
 from src.scanner import MarketScanner
+from src.signals import indicators_from_series, recommend
+
+
+def build_rec(prices, strike, yes_ask, no_ask, hours, edge):
+    """Educated recommendation for one market, safe against any bad input."""
+    try:
+        r = recommend(indicators_from_series(prices, strike),
+                      yes_ask, no_ask, hours, edge)
+        return {"action": r.action, "side": r.side, "conf": r.confidence,
+                "reasons": r.reasons}
+    except Exception:
+        return {"action": "HOLD", "side": "", "conf": 0,
+                "reasons": ["no price data"]}
+
+
+def apply_rec(row, prices, strike):
+    """Attach an educated recommendation to a row; when it's actionable, it also
+    becomes what the Take button pre-selects."""
+    rec = build_rec(prices, strike, row["yes_ask"], row["no_ask"],
+                    row["hours_left"], row["edge"])
+    row["rec"] = rec
+    if rec["action"] != "HOLD" and rec["side"]:
+        row["lean_side"] = rec["side"]
+        row["lean_ask"] = round(row["yes_ask"] if rec["side"] == "yes"
+                                else row["no_ask"], 2)
+    return row
 
 COINS = [
     ("BTC", "KXBTCD", 68000.0),
@@ -172,6 +197,11 @@ class LiveProvider:
                                    api["private_key_path"])
         self.scanner = _gate_free_scanner(self.client)
         self.ledger = Ledger()
+        try:
+            from src.crypto_analyzer import CryptoAnalyzer
+            self.analyzer = CryptoAnalyzer()
+        except Exception:
+            self.analyzer = None
         self.min_interval = min_interval
         self._lock = threading.Lock()
         self._cache = None
@@ -211,12 +241,34 @@ class LiveProvider:
                     seen.add(t)
                     rows.append(self._row(m))
         rows = [r for r in rows if r]
+        for r in rows:
+            prices, strike = self._prices_strike(r["ticker"])
+            apply_rec(r, prices, strike)
         rows.sort(key=lambda r: (r["hours_left"], -abs(r["edge"])))
         mids = {r["ticker"]: {"yes": (r["yes_bid"] + r["yes_ask"]) / 2,
                               "no": (r["no_bid"] + r["no_ask"]) / 2} for r in rows}
         return {"mode": "LIVE", "error": error, "balance": balance,
                 "updated": datetime.now(timezone.utc).isoformat(), "rows": rows,
                 "ledger": self.ledger.view(mids)}
+
+    def _prices_strike(self, ticker):
+        """Real price history + strike for a ticker, via the CryptoAnalyzer
+        (fetches live crypto prices, cached). Returns (prices, strike)."""
+        a = self.analyzer
+        if not a:
+            return None, 0
+        try:
+            cid, _sym = a._get_coin(ticker)
+            if not cid:
+                return None, 0
+            price = a._get_price(cid)
+            hist = a._get_history(cid) or []
+            prices = [p for _ts, p in hist]
+            if price:
+                prices = prices + [price]
+            return prices, (a._parse_strike(ticker) or 0)
+        except Exception:
+            return None, 0
 
     def _row(self, m):
         sc = self.scanner
@@ -268,6 +320,9 @@ class DemoProvider:
                 for m in event.get("markets", []):
                     rows.append(LiveProvider._row(self, m))
         rows = [r for r in rows if r]
+        for r in rows:
+            prices, strike = self.client.ta(r["ticker"])
+            apply_rec(r, prices, strike)
         rows.sort(key=lambda r: (r["hours_left"], -abs(r["edge"])))
         mids = {r["ticker"]: {"yes": (r["yes_bid"] + r["yes_ask"]) / 2,
                               "no": (r["no_bid"] + r["no_ask"]) / 2} for r in rows}
@@ -277,24 +332,43 @@ class DemoProvider:
 
 
 class _DemoClient:
+    """Synthetic market data with a real per-coin spot random walk, so the
+    recommendation engine runs on genuine price indicators (trend/momentum/etc).
+    Tickers are stable (SERIES-slot) so held positions persist."""
+
     def __init__(self, rng):
         self.rng = rng
+        self.coins = {}
+        for coin, series, spot in COINS:
+            self.coins[series] = {
+                "sym": coin, "spot": spot, "hist": [spot] * 30,
+                "vol": 0.0025 + rng.random() * 0.0035,
+                "strikes": [round(spot * (1 + off), 6)
+                            for off in (-0.004, 0.0, 0.004)],
+            }
         self._markets = {}
 
     def get_balance(self):
         return {"balance": 100000}
 
+    def _fmt_strike(self, s):
+        return f"{s:,.0f}" if s >= 1000 else f"{s:.4f}".rstrip("0").rstrip(".")
+
     def regenerate(self, elapsed):
+        for series, c in self.coins.items():
+            c["spot"] = max(1e-6, c["spot"] * (1 + self.rng.gauss(0, c["vol"])))
+            c["hist"].append(c["spot"])
+            if len(c["hist"]) > 40:
+                c["hist"].pop(0)
         self._markets = {}
-        for coin, series, spot in COINS:
-            ms = []
-            for i in range(3):
-                phase = hash((coin, i)) % 100 / 100.0
-                m = 0.5 + 0.18 * math.sin(elapsed / 20.0 + phase * 6.28)
-                m = max(0.1, min(0.9, m))
+        for series, c in self.coins.items():
+            spot, ms = c["spot"], []
+            for i, strike in enumerate(c["strikes"]):
+                # book-implied prob of YES (finish above strike) tracks spot
+                m = max(0.1, min(0.9, 0.5 + 6.0 * (spot - strike) / strike))
                 delta = 0.0
                 if (int(elapsed / 5) + i) % 3 == 0:
-                    delta = self.rng.choice([-0.19, 0.19])
+                    delta = self.rng.choice([-0.16, 0.16])
                 yb, ya = round(m - 0.01, 2), round(m + 0.01, 2)
                 no_mid = 1 - m + 0.02
                 nb, na = round(no_mid - 0.01, 2), round(no_mid + 0.01, 2)
@@ -302,10 +376,9 @@ class _DemoClient:
                 mins = 15 + i * 20 - int(elapsed) % 15
                 close = (datetime.now(timezone.utc)
                          + timedelta(minutes=max(1, mins))).isoformat()
-                strike = int(spot * (1 + (i - 1) * 0.002))
                 ms.append({
-                    "ticker": f"{series}-{strike}-{i}", "event_ticker": series,
-                    "title": f"{coin} above ${strike:,} at :{(i*20)%60:02d}",
+                    "ticker": f"{series}-{i}", "event_ticker": series,
+                    "title": f"{c['sym']} above ${self._fmt_strike(strike)} (up/down)",
                     "status": "active",
                     "yes_bid_dollars": yb, "yes_ask_dollars": ya,
                     "no_bid_dollars": nb, "no_ask_dollars": na,
@@ -314,6 +387,18 @@ class _DemoClient:
                     "close_time": close,
                 })
             self._markets[series] = ms
+
+    def ta(self, ticker):
+        """Price history + strike for a demo ticker (for the recommendation)."""
+        series, _, idx = ticker.rpartition("-")
+        c = self.coins.get(series)
+        if not c:
+            return None, 0
+        try:
+            strike = c["strikes"][int(idx)]
+        except (ValueError, IndexError):
+            strike = c["spot"]
+        return list(c["hist"]), strike
 
     def get_events(self, series_ticker=None, **kw):
         return {"events": [{"markets": self._markets.get(series_ticker, [])}],
@@ -496,7 +581,7 @@ PAGE = r"""<!doctype html>
 
 <section class="stats">
   <div class="stat"><div class="lbl">Markets</div><div class="val" id="s-count">—</div><div class="foot">up/down contracts</div></div>
-  <div class="stat"><div class="lbl">Bot signals</div><div class="val up" id="s-sig">—</div><div class="foot">edge ≥ 5%</div></div>
+  <div class="stat"><div class="lbl">Suggestions</div><div class="val up" id="s-sig">—</div><div class="foot">BUY YES / BUY NO</div></div>
   <div class="stat"><div class="lbl">Best edge</div><div class="val" id="s-edge">—</div><div class="foot">fair − ask</div></div>
   <div class="stat"><div class="lbl">Open trades</div><div class="val" id="s-open">0</div><div class="foot">you're holding</div></div>
   <div class="stat"><div class="lbl">Balance</div><div class="val" id="s-bal">—</div><div class="foot">Kalshi account</div></div>
@@ -504,7 +589,7 @@ PAGE = r"""<!doctype html>
 
 <div class="tablewrap"><div class="scroll"><table>
   <thead><tr><th class="l">Market</th><th>Coin</th><th>YES bid/ask</th><th>NO bid/ask</th>
-    <th>Last</th><th>Vol</th><th>Closes in</th><th>Edge</th><th>Signal</th><th class="l">Trade</th></tr></thead>
+    <th>Last</th><th>Vol</th><th>Closes in</th><th>Edge</th><th>Suggestion</th><th class="l">Trade</th></tr></thead>
   <tbody id="rows"><tr><td class="l mut" colspan="10">Loading…</td></tr></tbody>
 </table></div></div>
 
@@ -546,7 +631,7 @@ async function load(){
 
   const rows=d.rows||[], L=d.ledger;
   const held=new Set((L&&L.open||[]).map(p=>p.ticker));
-  const sigs=rows.filter(r=>r.side);
+  const sigs=rows.filter(r=>r.rec&&r.rec.action!=='HOLD');
   document.getElementById('s-count').textContent=rows.length;
   document.getElementById('s-sig').textContent=sigs.length;
   const best=rows.reduce((a,r)=>Math.max(a,r.edge||0),0);
@@ -557,17 +642,21 @@ async function load(){
   const tb=document.getElementById('rows'); closeTimes={};
   tb.innerHTML=rows.length?rows.map(r=>{
     closeTimes[r.ticker]=new Date(r.close_time).getTime();
-    const sig=r.side?('<span class="chip '+r.side+'">BUY '+r.side.toUpperCase()+'</span>'):'<span class="chip flat">—</span>';
+    const rc=r.rec||{action:'HOLD',side:'',conf:0,reasons:[]};
+    const why=(rc.reasons||[]).join(' · ').replace(/"/g,'&quot;');
+    const rec=rc.action==='HOLD'
+      ? '<span class="chip flat" title="'+why+'">HOLD</span>'
+      : '<span class="chip '+rc.side+'" title="'+why+'">'+rc.action+' <b>'+rc.conf+'%</b></span>';
     const edge=r.edge>0?('<span class="edge pos">'+pct(r.edge)+'</span>'):'<span class="mut">—</span>';
     const btn=held.has(r.ticker)?'<button class="take held" disabled>✓ holding</button>'
       :'<button class="take" onclick="take(\''+r.ticker+'\',\''+r.lean_side+'\','+r.lean_ask+')">Take '+r.lean_side.toUpperCase()+' $'+r.lean_ask.toFixed(2)+'</button>';
-    return '<tr data-t="'+r.ticker+'" class="'+(r.side?'sig '+r.side:'')+'">'
+    return '<tr data-t="'+r.ticker+'" class="'+(rc.side?'sig '+rc.side:'')+'">'
       +'<td class="l">'+r.title+'</td><td><span class="coin">'+r.coin+'</span></td>'
       +'<td class="book"><span>'+fmtC(r.yes_bid)+'</span> / '+fmtC(r.yes_ask)+'</td>'
       +'<td class="book"><span>'+fmtC(r.no_bid)+'</span> / '+fmtC(r.no_ask)+'</td>'
       +'<td>'+fmtC(r.last)+'</td><td class="mut">'+fmtVol(r.volume)+'</td>'
       +'<td class="cdcell">'+countdown(closeTimes[r.ticker])+'</td><td>'+edge+'</td>'
-      +'<td>'+sig+'</td><td class="l">'+btn+'</td></tr>';
+      +'<td>'+rec+'</td><td class="l">'+btn+'</td></tr>';
   }).join(''):'<tr><td class="l mut" colspan="10">No open up/down crypto markets right now.</td></tr>';
 
   // ledger
@@ -592,7 +681,7 @@ async function load(){
   }
   const f=document.getElementById('foot');
   f.innerHTML=d.error?('<span class="err">API note: '+d.error+'</span>')
-    :(rows.length+' markets · '+sigs.length+' signal(s) · edge = bot fair value − ask (heuristic, not a guarantee)'
+    :(rows.length+' markets · '+sigs.length+' suggestion(s) · <b>Suggestion</b> = trend + momentum + distance-to-strike + volatility + time (hover for the reasons). A heuristic read of price action, <b>not</b> a guarantee.'
       +(d.mode==='DEMO'?' · <span class="warn">demo trades don\'t settle — use LIVE for win/loss P&L</span>':''));
 }
 load(); setInterval(load,REFRESH);
