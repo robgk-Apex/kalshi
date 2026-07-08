@@ -161,7 +161,7 @@ class LiveProvider:
     signals. Results are cached for `min_interval` seconds so rapid browser
     polling doesn't hammer the API."""
 
-    def __init__(self, config_path, min_interval=4.0):
+    def __init__(self, config_path, min_interval=1.0):
         import yaml
         from src.api_client import KalshiClient
 
@@ -382,7 +382,8 @@ def main():
                         help="Use synthetic data (no network/keys)")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8787)
-    parser.add_argument("--refresh", type=float, default=5.0)
+    parser.add_argument("--refresh", type=float, default=1.0,
+                        help="Browser refresh interval in seconds (default 1)")
     args = parser.parse_args()
 
     os.makedirs("logs", exist_ok=True)
@@ -394,7 +395,7 @@ def main():
             print(f"Config not found: {args.config}. Use --demo to preview "
                   f"without keys, or copy config/config.example.yaml.")
             sys.exit(1)
-        provider = LiveProvider(args.config)
+        provider = LiveProvider(args.config, min_interval=args.refresh)
         print("[dashboard] LIVE mode — pulling real Kalshi markets")
 
     server = ThreadingHTTPServer((args.host, args.port),
