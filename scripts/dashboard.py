@@ -654,12 +654,13 @@ PAGE = r"""<!doctype html>
 </section>
 
 <div class="toolbar">
-  <span class="tlabel">Settling within</span>
+  <span class="tlabel">Window</span>
   <div class="seg" id="filter">
-    <button data-f="15">15 min</button>
-    <button data-f="30">30 min</button>
-    <button data-f="60" class="on">1 hour</button>
-    <button data-f="9999">All</button>
+    <button data-cad="15m">15 min</button>
+    <button data-cad="hourly">Hourly</button>
+    <button data-cad="daily">Daily</button>
+    <button data-cad="weekly">Weekly</button>
+    <button data-cad="all" class="on">All</button>
   </div>
 </div>
 
@@ -690,7 +691,8 @@ function tick(){document.querySelectorAll('tr[data-t]').forEach(tr=>{const t=tr.
   if(closeTimes[t]) tr.querySelector('.cdcell').innerHTML=countdown(closeTimes[t]);});}
 setInterval(tick,1000);
 
-let FILTER=60;  // show markets settling within this many minutes
+let CAD="all";  // Kalshi crypto up/down cadences: 15m / hourly / daily / weekly
+const cadence=hl=>hl<=0.4?"15m":hl<=3?"hourly":hl<=48?"daily":"weekly";
 async function take(ticker,side,price){
   const def=localStorage.getItem('kalshi_amt')||'25';
   const inp=prompt('How much did you put in on '+side.toUpperCase()+' @ $'+price.toFixed(2)+' per contract?  ($)', def);
@@ -704,7 +706,7 @@ async function take(ticker,side,price){
 }
 document.getElementById('clear').onclick=async()=>{if(confirm('Clear all tracked trades?')){await fetch('/api/clear',{method:'POST'});load();}};
 document.querySelectorAll('#filter button').forEach(btn=>btn.onclick=()=>{
-  FILTER=+btn.dataset.f;
+  CAD=btn.dataset.cad;
   document.querySelectorAll('#filter button').forEach(b=>b.classList.toggle('on',b===btn));
   load();
 });
@@ -720,7 +722,7 @@ async function load(){
   const L=d.ledger;
   // Stable order by ticker so rows keep their position and only the numbers /
   // prediction update — they don't jump around as countdowns/edges change.
-  const rows=(d.rows||[]).filter(r=>(r.hours_left*60)<=FILTER+0.001)
+  const rows=(d.rows||[]).filter(r=>CAD==="all"||cadence(r.hours_left)===CAD)
     .sort((a,b)=>a.ticker<b.ticker?-1:(a.ticker>b.ticker?1:0));
   const held=new Set((L&&L.open||[]).map(p=>p.ticker));
   const sigs=rows.filter(r=>r.rec&&r.rec.action!=='HOLD');

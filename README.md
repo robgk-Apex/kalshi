@@ -80,8 +80,9 @@ dashboard keeps a ledger (`logs/dashboard_ledger.json`) and shows an **active
 P&L** that updates as your positions settle — a win pays $1/contract, a loss
 pays $0.
 
-**Filter by time to settle.** A "Settling within" toggle limits the board to
-markets closing in **15 min / 30 min / 1 hour** (or All). Realized P&L counts only settled trades; open positions are marked to
+**Filter by window.** A toggle limits the board to Kalshi's crypto up/down
+cadences — **15-min / hourly / daily / weekly** (or All) — classified by time
+to settlement. Realized P&L counts only settled trades; open positions are marked to
 the current price as unrealized. (Settlement outcomes come from Kalshi, so
 realized P&L advances in LIVE mode; in `--demo` trades stay open.)
 
