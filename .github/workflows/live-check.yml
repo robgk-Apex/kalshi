@@ -8,6 +8,7 @@ on:
     branches: ["claude/new-session-ww2byg"]
     paths:
       - "scripts/live_check.py"
+      - "scripts/export_snapshot.py"
       - ".github/workflows/live-check.yml"
 
 jobs:
@@ -21,3 +22,5 @@ jobs:
       - run: pip install --quiet cryptography requests pyyaml
       - name: Pull real Kalshi up/down crypto markets
         run: python scripts/live_check.py
+      - name: Export a real market snapshot
+        run: python scripts/export_snapshot.py

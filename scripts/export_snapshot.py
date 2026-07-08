@@ -1,0 +1,120 @@
+"""Export a REAL Kalshi snapshot (near-term up/down crypto) as one JSON line.
+
+Runs in CI (which can reach Kalshi + Coin- price feeds). Prints the snapshot
+between markers so it can be lifted out of the job log and rendered into a
+viewable board. Public — no keys.
+"""
+
+import json
+import os
+import sys
+from datetime import datetime, timezone
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from src.api_client import KalshiClient
+from src.signals import indicators_from_series, recommend
+
+BASE = os.environ.get("KALSHI_BASE_URL", "https://api.elections.kalshi.com/trade-api/v2")
+SERIES = [("BTC", "KXBTCD"), ("ETH", "KXETHD"), ("SOL", "KXSOLD"),
+          ("XRP", "KXXRPD"), ("DOGE", "KXDOGED")]
+MAX_ROWS = 45
+
+
+def f(m, *names):
+    for n in names:
+        v = m.get(n)
+        if v not in (None, ""):
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                pass
+    return 0.0
+
+
+def hours_until(ts):
+    if not ts:
+        return 9999.0
+    try:
+        if ts.endswith("Z"):
+            ts = ts[:-1] + "+00:00"
+        return max(0.0, (datetime.fromisoformat(ts) - datetime.now(timezone.utc)).total_seconds() / 3600)
+    except Exception:
+        return 9999.0
+
+
+def main():
+    client = KalshiClient(BASE)  # public
+    try:
+        from src.crypto_analyzer import CryptoAnalyzer
+        analyzer = CryptoAnalyzer()
+    except Exception:
+        analyzer = None
+
+    hist_cache = {}
+
+    def prices_strike(coin, ticker):
+        strike = analyzer._parse_strike(ticker) if analyzer else None
+        if not analyzer or strike is None:
+            return None, 0
+        if coin not in hist_cache:
+            cid, _ = analyzer._get_coin(ticker)
+            hist = analyzer._get_history(cid) or [] if cid else []
+            price = analyzer._get_price(cid) if cid else None
+            series = [p for _t, p in hist]
+            if price:
+                series = series + [price]
+            hist_cache[coin] = series
+        return hist_cache[coin], strike
+
+    raw = []
+    for coin, series in SERIES:
+        try:
+            resp = client.get_events(series_ticker=series, limit=200,
+                                     with_nested_markets=True, status="open")
+        except Exception as e:
+            print(f"  {series}: ERROR {e}")
+            continue
+        for ev in resp.get("events", []):
+            for m in ev.get("markets", []):
+                t = m.get("ticker", "")
+                if not t:
+                    continue
+                hrs = hours_until(m.get("expected_expiration_time") or m.get("close_time"))
+                raw.append((hrs, coin, series, m))
+    raw.sort(key=lambda x: x[0])
+    near = raw[:MAX_ROWS]
+
+    rows = []
+    for hrs, coin, series, m in near:
+        ya = f(m, "yes_ask_dollars", "yes_ask")
+        yb = f(m, "yes_bid_dollars", "yes_bid")
+        na = f(m, "no_ask_dollars", "no_ask")
+        nb = f(m, "no_bid_dollars", "no_bid")
+        last = f(m, "last_price_dollars", "last_price")
+        vol = f(m, "volume_fp", "volume")
+        prices, strike = prices_strike(coin, m["ticker"])
+        try:
+            rec = recommend(indicators_from_series(prices, strike), ya, na, hrs)
+            rec = {"action": rec.action, "side": rec.side, "conf": rec.confidence,
+                   "reasons": rec.reasons}
+        except Exception:
+            rec = {"action": "HOLD", "side": "", "conf": 0, "reasons": ["no price data"]}
+        bucket = 15 if hrs <= 0.3 else (30 if hrs <= 0.6 else 60)
+        rows.append({
+            "ticker": m["ticker"], "coin": coin,
+            "title": m.get("subtitle") or m.get("yes_sub_title") or m.get("title", coin),
+            "yes_bid": round(yb, 2), "yes_ask": round(ya, 2),
+            "no_bid": round(nb, 2), "no_ask": round(na, 2),
+            "last": round(last, 2), "volume": round(vol),
+            "hours_left": round(hrs, 4), "bucket": bucket, "rec": rec,
+        })
+
+    payload = {"generated_at": datetime.now(timezone.utc).isoformat(),
+               "source": BASE, "count": len(rows), "rows": rows}
+    print(f"\nSnapshot: {len(rows)} near-term real markets")
+    print("SNAPSHOT_JSON " + json.dumps(payload, separators=(",", ":")))
+
+
+if __name__ == "__main__":
+    main()
