@@ -51,6 +51,16 @@ python scripts/dashboard.py --demo                         # synthetic, no keys
 Then open <http://localhost:8787>. Live mode needs your API keys and a network
 that can reach Kalshi; use `--demo` anywhere else to preview the screen.
 
+**Which mode pulls real Kalshi data?** Only `--config` (LIVE) mode does — it
+signs requests with your key and reads real `KXBTCD`/`KXETHD`/… up/down
+markets. Run it from your own machine (Kalshi must be reachable). For real
+crypto markets set the production API in `config.yaml`:
+`base_url: "https://api.elections.kalshi.com/trade-api/v2"`. On startup the
+terminal prints how many live markets it pulled so you can confirm it's real.
+The `--demo` mode and any hosted/preview version use a *simulated* feed —
+a browser sandbox can't reach Kalshi, so a live web app needs this Python
+process (or a similar backend) running server-side with Kalshi access.
+
 **Educated buy/sell suggestions.** Each market shows a **BUY YES / BUY NO /
 HOLD** recommendation with a confidence score and its reasons (hover it). It's
 built by `src/signals.py` from real technical indicators — trend (moving

@@ -206,6 +206,7 @@ class LiveProvider:
         self._lock = threading.Lock()
         self._cache = None
         self._cache_at = 0.0
+        self._logged = False
 
     def snapshot(self):
         with self._lock:
@@ -227,24 +228,42 @@ class LiveProvider:
 
         seen = set()
         for series in self.scanner.crypto_series:
-            try:
-                resp = self.client.get_events(series_ticker=series, limit=200,
-                                              with_nested_markets=True)
-            except Exception as e:
-                error = str(e)
-                continue
-            for event in resp.get("events", []):
-                for m in event.get("markets", []):
-                    t = m.get("ticker", "")
-                    if not t or t in seen:
-                        continue
-                    seen.add(t)
-                    rows.append(self._row(m))
+            cursor = None
+            for _page in range(6):  # page through all open strikes for the series
+                try:
+                    params = {"series_ticker": series, "limit": 200,
+                              "with_nested_markets": True, "status": "open"}
+                    if cursor:
+                        params["cursor"] = cursor
+                    resp = self.client.get_events(**params)
+                except Exception as e:
+                    error = str(e)
+                    break
+                for event in resp.get("events", []):
+                    for m in event.get("markets", []):
+                        t = m.get("ticker", "")
+                        if not t or t in seen:
+                            continue
+                        seen.add(t)
+                        rows.append(self._row(m))
+                cursor = resp.get("cursor", "")
+                if not cursor:
+                    break
         rows = [r for r in rows if r]
         for r in rows:
             prices, strike = self._prices_strike(r["ticker"])
             apply_rec(r, prices, strike)
         rows.sort(key=lambda r: (r["hours_left"], -abs(r["edge"])))
+        if not self._logged:
+            self._logged = True
+            if rows:
+                print(f"[dashboard] LIVE: pulled {len(rows)} real Kalshi markets "
+                      f"(e.g. {rows[0]['ticker']} yes_ask=${rows[0]['yes_ask']:.2f})")
+            elif error:
+                print(f"[dashboard] LIVE: no markets — {error}. Check API key / "
+                      f"base_url in config, and that markets are open.")
+            else:
+                print("[dashboard] LIVE: no open up/down crypto markets right now.")
         mids = {r["ticker"]: {"yes": (r["yes_bid"] + r["yes_ask"]) / 2,
                               "no": (r["no_bid"] + r["no_ask"]) / 2} for r in rows}
         return {"mode": "LIVE", "error": error, "balance": balance,
