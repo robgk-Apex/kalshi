@@ -59,10 +59,14 @@ plus the book's own edge. In LIVE mode the indicators come from real crypto
 prices (via `crypto_analyzer.py`). It's a transparent, explainable read of price
 action, **not** a guarantee — hourly up/down crypto is close to a coin flip.
 
-**Track your trades.** Click **Take** on any market to log a trade you made. The
+**Track your trades.** Click **Take** on any market to log a trade you made — it
+asks **how much money you put in**, so the P&L reflects your real stake. The
 dashboard keeps a ledger (`logs/dashboard_ledger.json`) and shows an **active
 P&L** that updates as your positions settle — a win pays $1/contract, a loss
-pays $0. Realized P&L counts only settled trades; open positions are marked to
+pays $0.
+
+**Filter by time to settle.** A "Settling within" toggle limits the board to
+markets closing in **15 min / 30 min / 1 hour** (or All). Realized P&L counts only settled trades; open positions are marked to
 the current price as unrealized. (Settlement outcomes come from Kalshi, so
 realized P&L advances in LIVE mode; in `--demo` trades stay open.)
 

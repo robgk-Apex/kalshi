@@ -536,6 +536,12 @@ PAGE = r"""<!doctype html>
   .section-h{display:flex;align-items:center;gap:10px;margin:22px 2px 10px}
   .section-h h2{font-size:12px;letter-spacing:.9px;text-transform:uppercase;color:var(--dim);margin:0;font-weight:600}
   .section-h .rule{flex:1;height:1px;background:var(--line)}
+  .toolbar{display:flex;align-items:center;gap:12px;margin:2px 2px 12px}
+  .tlabel{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.7px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--panel2)}
+  .seg button{background:transparent;color:var(--dim);border:none;border-right:1px solid var(--line);padding:6px 13px;font:inherit;font-size:11px;font-weight:600;cursor:pointer}
+  .seg button:last-child{border-right:none} .seg button:hover{color:var(--txt)}
+  .seg button.on{background:rgba(74,168,255,.16);color:var(--accent)}
   .tablewrap{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel2)}
   .scroll{overflow-x:auto} table{width:100%;border-collapse:collapse;min-width:940px}
   thead th{color:var(--dim);font-weight:500;font-size:10px;letter-spacing:.7px;text-transform:uppercase;text-align:right;padding:11px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
@@ -564,7 +570,6 @@ PAGE = r"""<!doctype html>
   <h1 class="brand"><span class="mark">◆</span> KALSHI&nbsp;<span class="sub">up/down crypto terminal</span></h1>
   <span class="pill"><span id="dot" class="dot"></span><b id="mode">connecting…</b></span>
   <div class="grow"></div>
-  <span class="pill">size <select id="qty"><option>10</option><option>25</option><option>50</option><option>100</option></select> contracts</span>
   <span class="pill">updated <b id="upd">—</b></span>
 </header>
 
@@ -587,6 +592,16 @@ PAGE = r"""<!doctype html>
   <div class="stat"><div class="lbl">Balance</div><div class="val" id="s-bal">—</div><div class="foot">Kalshi account</div></div>
 </section>
 
+<div class="toolbar">
+  <span class="tlabel">Settling within</span>
+  <div class="seg" id="filter">
+    <button data-f="15">15 min</button>
+    <button data-f="30">30 min</button>
+    <button data-f="60" class="on">1 hour</button>
+    <button data-f="9999">All</button>
+  </div>
+</div>
+
 <div class="tablewrap"><div class="scroll"><table>
   <thead><tr><th class="l">Market</th><th>Coin</th><th>YES bid/ask</th><th>NO bid/ask</th>
     <th>Last</th><th>Vol</th><th>Closes in</th><th>Edge</th><th>Suggestion</th><th class="l">Trade</th></tr></thead>
@@ -595,8 +610,8 @@ PAGE = r"""<!doctype html>
 
 <div class="section-h"><h2>My trades</h2><span class="rule"></span></div>
 <div class="tablewrap"><div class="scroll"><table>
-  <thead><tr><th class="l">Market</th><th>Side</th><th>Entry</th><th>Qty</th><th>Now / Result</th><th>P&amp;L</th><th class="l">Status</th></tr></thead>
-  <tbody id="ledger"><tr><td class="empty l" colspan="7">No trades yet — click <b>Take</b> on a market above.</td></tr></tbody>
+  <thead><tr><th class="l">Market</th><th>Side</th><th>Entry</th><th>Invested</th><th>Qty</th><th>Now / Result</th><th>P&amp;L</th><th class="l">Status</th></tr></thead>
+  <tbody id="ledger"><tr><td class="empty l" colspan="8">No trades yet — click <b>Take</b> on a market above.</td></tr></tbody>
 </table></div></div>
 
 <footer id="foot">Waiting for data…</footer>
@@ -614,12 +629,24 @@ function tick(){document.querySelectorAll('tr[data-t]').forEach(tr=>{const t=tr.
   if(closeTimes[t]) tr.querySelector('.cdcell').innerHTML=countdown(closeTimes[t]);});}
 setInterval(tick,1000);
 
+let FILTER=60;  // show markets settling within this many minutes
 async function take(ticker,side,price){
+  const def=localStorage.getItem('kalshi_amt')||'25';
+  const inp=prompt('How much did you put in on '+side.toUpperCase()+' @ $'+price.toFixed(2)+' per contract?  ($)', def);
+  if(inp===null) return;
+  const amt=parseFloat(inp); if(!amt||amt<=0) return;
+  localStorage.setItem('kalshi_amt', Math.round(amt));
+  const count=Math.max(1, Math.round(amt/price));
   await fetch('/api/take',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({ticker,side,price,count:parseInt(document.getElementById('qty').value)||10})});
+    body:JSON.stringify({ticker,side,price,count})});
   load();
 }
 document.getElementById('clear').onclick=async()=>{if(confirm('Clear all tracked trades?')){await fetch('/api/clear',{method:'POST'});load();}};
+document.querySelectorAll('#filter button').forEach(btn=>btn.onclick=()=>{
+  FILTER=+btn.dataset.f;
+  document.querySelectorAll('#filter button').forEach(b=>b.classList.toggle('on',b===btn));
+  load();
+});
 
 async function load(){
   let d; try{ d=await (await fetch('/api/markets')).json(); }
@@ -629,7 +656,8 @@ async function load(){
   document.getElementById('mode').textContent=d.mode+(d.mode==='DEMO'?' (synthetic)':'');
   document.getElementById('upd').textContent=new Date(d.updated).toLocaleTimeString();
 
-  const rows=d.rows||[], L=d.ledger;
+  const L=d.ledger;
+  const rows=(d.rows||[]).filter(r=>(r.hours_left*60)<=FILTER+0.001);
   const held=new Set((L&&L.open||[]).map(p=>p.ticker));
   const sigs=rows.filter(r=>r.rec&&r.rec.action!=='HOLD');
   document.getElementById('s-count').textContent=rows.length;
@@ -675,9 +703,9 @@ async function load(){
       const badge='<span class="badge '+p.st+'">'+(p.st==='won'?'WON':p.st==='lost'?'LOST':'OPEN')+'</span>';
       return '<tr><td class="l">'+p.coin+' '+p.side.toUpperCase()+' · '+p.ticker+'</td>'
         +'<td><span class="chip '+p.side+'">'+p.side.toUpperCase()+'</span></td>'
-        +'<td>'+fmtC(p.entry)+'</td><td>'+p.qty+'</td><td>'+now+'</td>'
+        +'<td>'+fmtC(p.entry)+'</td><td>$'+(p.entry*p.qty).toFixed(2)+'</td><td>'+p.qty+'</td><td>'+now+'</td>'
         +'<td class="'+cls+'">'+pnl+'</td><td class="l">'+badge+'</td></tr>';
-    }).join(''):'<tr><td class="empty l" colspan="7">No trades yet — click <b>Take</b> on a market above.</td></tr>';
+    }).join(''):'<tr><td class="empty l" colspan="8">No trades yet — click <b>Take</b> on a market above.</td></tr>';
   }
   const f=document.getElementById('foot');
   f.innerHTML=d.error?('<span class="err">API note: '+d.error+'</span>')
