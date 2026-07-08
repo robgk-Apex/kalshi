@@ -1,0 +1,23 @@
+name: Kalshi live check
+
+# Runs a one-shot real Kalshi fetch on GitHub's runners (which have internet
+# access to Kalshi). Triggers on demand and when the checker changes.
+on:
+  workflow_dispatch:
+  push:
+    branches: ["claude/new-session-ww2byg"]
+    paths:
+      - "scripts/live_check.py"
+      - ".github/workflows/live-check.yml"
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet cryptography requests pyyaml
+      - name: Pull real Kalshi up/down crypto markets
+        run: python scripts/live_check.py
