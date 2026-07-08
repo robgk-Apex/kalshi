@@ -105,6 +105,17 @@ docker run -p 8787:8787 \
 Fly.io, Railway, a VPS, etc. The host just needs to reach
 `api.elections.kalshi.com`.
 
+**One-click configs are included:**
+
+- **Render** (`render.yaml`): in Render, *New → Blueprint*, point it at this
+  repo, deploy. You get a public HTTPS URL. Add `KALSHI_KEY_ID` /
+  `KALSHI_PRIVATE_KEY` as secrets for the balance tile (optional).
+- **Fly.io** (`fly.toml`): `fly launch --copy-config --now`. For the balance
+  tile: `fly secrets set KALSHI_KEY_ID=... KALSHI_PRIVATE_KEY="$(cat keys/kalshi.pem)"`.
+
+Both default to public (no-keys) live mode, so a fresh deploy shows real
+markets immediately.
+
 ## Focus mode
 
 `config/config.yaml` selects what gets scanned:

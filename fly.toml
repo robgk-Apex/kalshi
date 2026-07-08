@@ -1,0 +1,25 @@
+# One-click deploy to Fly.io — https://fly.io
+#   fly launch --copy-config --now      (uses this file + the Dockerfile)
+# Public (no-keys) live mode by default. To add your account balance:
+#   fly secrets set KALSHI_KEY_ID=... KALSHI_PRIVATE_KEY="$(cat keys/kalshi.pem)"
+app = "kalshi-dashboard"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  HOST = "0.0.0.0"
+  PORT = "8787"
+  KALSHI_BASE_URL = "https://api.elections.kalshi.com/trade-api/v2"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
