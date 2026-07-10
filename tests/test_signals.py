@@ -2,7 +2,8 @@
 
 import unittest
 
-from src.signals import indicators_from_series, recommend, MAX_ENTRY
+from src.signals import (indicators_from_series, recommend, strike_from_market,
+                         MAX_ENTRY)
 
 
 def rising(n=30, start=100.0, slope=0.25):
@@ -27,6 +28,34 @@ class TestIndicators(unittest.TestCase):
         self.assertGreater(ind["distance"], 0)
         self.assertGreater(ind["trend_short"], 0)
         self.assertGreater(ind["momentum"], 0)
+
+
+class TestStrikeFromMarket(unittest.TestCase):
+
+    def test_hourly_ticker_suffix(self):
+        # Hourly up/down markets encode the strike as a -T<price> suffix.
+        m = {"ticker": "KXBTCD-25JUL0812-T48999.99"}
+        self.assertAlmostEqual(strike_from_market(m), 48999.99)
+
+    def test_fifteen_min_floor_strike_field(self):
+        # 15-min markets carry it in floor_strike.
+        m = {"ticker": "KXSOL15M-26JUL081900-00", "floor_strike": 77.3918,
+             "title": "Target Price: $77.3918"}
+        self.assertAlmostEqual(strike_from_market(m), 77.3918)
+
+    def test_fifteen_min_title_fallback(self):
+        # No structured field / T-suffix — parse the dollar amount in the title.
+        m = {"ticker": "KXETH15M-26JUL081900-00",
+             "title": "Ethereum above Target Price: $3,412.50 at 7:00pm?"}
+        self.assertAlmostEqual(strike_from_market(m), 3412.50)
+
+    def test_string_floor_strike(self):
+        m = {"ticker": "X", "floor_strike": "1234.5"}
+        self.assertAlmostEqual(strike_from_market(m), 1234.5)
+
+    def test_no_strike_returns_zero(self):
+        self.assertEqual(strike_from_market({"ticker": "KXBTC15M-FOO-00"}), 0.0)
+        self.assertEqual(strike_from_market({}), 0.0)
 
 
 class TestRecommend(unittest.TestCase):

@@ -43,7 +43,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import src.paper_trader as paper_trader_module
 from src.scanner import MarketScanner
-from src.signals import indicators_from_series, recommend
+from src.signals import indicators_from_series, recommend, strike_from_market
 
 
 def build_rec(prices, strike, yes_ask, no_ask, hours, edge):
@@ -250,8 +250,8 @@ class LiveProvider:
                     break
         rows = [r for r in rows if r]
         for r in rows:
-            prices, strike = self._prices_strike(r["ticker"])
-            apply_rec(r, prices, strike)
+            prices, _ = self._prices_strike(r["ticker"])
+            apply_rec(r, prices, r.get("strike", 0))
         rows.sort(key=lambda r: (r["hours_left"], -abs(r["edge"])))
         if not self._logged:
             self._logged = True
@@ -315,6 +315,9 @@ class LiveProvider:
             "edge": round(opp.edge, 4) if opp else 0.0,
             "side": opp.side if opp else "",
             "lean_side": lean_side, "lean_ask": round(lean_ask, 2),
+            # Strike across both formats: hourly -T<price> suffix AND the
+            # 15-min floor_strike field / "Target Price: $X" title.
+            "strike": strike_from_market(m),
         }
 
 

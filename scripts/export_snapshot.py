@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.api_client import KalshiClient
-from src.signals import indicators_from_series, recommend
+from src.signals import indicators_from_series, recommend, strike_from_market
 
 BASE = os.environ.get("KALSHI_BASE_URL", "https://api.elections.kalshi.com/trade-api/v2")
 SERIES = [
@@ -60,11 +60,14 @@ def main():
 
     hist_cache = {}
 
-    def prices_strike(coin, ticker):
-        strike = analyzer._parse_strike(ticker) if analyzer else None
-        if not analyzer or strike is None:
-            return None, 0
+    def prices_strike(coin, market):
+        # Strike works across BOTH formats: hourly -T<price> ticker suffix AND
+        # the 15-min floor_strike field / "Target Price: $X" title.
+        strike = strike_from_market(market)
+        if not analyzer or strike <= 0:
+            return None, strike
         if coin not in hist_cache:
+            ticker = market.get("ticker", "")
             cid, _ = analyzer._get_coin(ticker)
             hist = analyzer._get_history(cid) or [] if cid else []
             price = analyzer._get_price(cid) if cid else None
@@ -111,7 +114,7 @@ def main():
         nb = f(m, "no_bid_dollars", "no_bid")
         last = f(m, "last_price_dollars", "last_price")
         vol = f(m, "volume_fp", "volume")
-        prices, strike = prices_strike(coin, m["ticker"])
+        prices, strike = prices_strike(coin, m)
         try:
             rec = recommend(indicators_from_series(prices, strike), ya, na, hrs)
             rec = {"action": rec.action, "side": rec.side, "conf": rec.confidence,

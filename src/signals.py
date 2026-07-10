@@ -19,8 +19,46 @@ noise.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import List, Optional
+
+
+def strike_from_market(market: dict) -> float:
+    """Extract a market's strike price across Kalshi's formats.
+
+    Hourly markets encode it as a `-T<price>` ticker suffix; the 15-minute
+    markets put it in the `floor_strike` field and the title ("Target Price:
+    $77.39"). Tries, in order: structured strike fields, the ticker suffix,
+    then a dollar amount in the title/subtitle. Returns 0.0 if none found.
+    """
+    for key in ("floor_strike", "cap_strike", "strike", "strike_price"):
+        v = market.get(key)
+        if isinstance(v, (int, float)) and v > 0:
+            return float(v)
+        if isinstance(v, str):
+            try:
+                f = float(v.replace(",", "").replace("$", ""))
+                if f > 0:
+                    return f
+            except ValueError:
+                pass
+    for part in str(market.get("ticker", "")).split("-"):
+        if part[:1] in ("T", "B"):
+            try:
+                return float(part[1:])
+            except ValueError:
+                pass
+    for key in ("subtitle", "yes_sub_title", "title", "no_sub_title"):
+        m = re.search(r"\$?\s*([\d,]+\.?\d*)", str(market.get(key, "")))
+        if m:
+            try:
+                f = float(m.group(1).replace(",", ""))
+                if f > 0:
+                    return f
+            except ValueError:
+                pass
+    return 0.0
 
 # Score needed before we'll suggest a trade at all (below this -> HOLD).
 DECISION_THRESHOLD = 25.0
