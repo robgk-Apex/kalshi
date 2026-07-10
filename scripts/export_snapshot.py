@@ -91,11 +91,16 @@ def main():
             print(f"  {series}: ERROR {e}")
             continue
         cand = []
+        n_markets = 0
+        sample = None
         for ev in resp.get("events", []):
             for m in ev.get("markets", []):
                 t = m.get("ticker", "")
                 if not t:
                     continue
+                n_markets += 1
+                if sample is None:
+                    sample = m
                 ya = f(m, "yes_ask_dollars", "yes_ask")
                 if not (0.08 <= ya <= 0.92):  # skip near-certain strikes
                     continue
@@ -103,6 +108,12 @@ def main():
                 cand.append((hrs, abs(ya - 0.5), coin, series, m))
         # soonest to settle, then closest to a coin-flip (most interesting)
         cand.sort(key=lambda x: (x[0], x[1]))
+        # Diagnostics — especially to confirm the 15-min (KX*15M) markets and
+        # that a strike parses out of them.
+        strk = strike_from_market(sample) if sample else 0.0
+        print(f"  {series}: {len(resp.get('events', []))} events, "
+              f"{n_markets} markets, {len(cand)} in-band; "
+              f"sample strike={strk} ({(sample or {}).get('ticker','-')})")
         selected.extend(cand[:per_coin])
     selected.sort(key=lambda x: x[0])
 
