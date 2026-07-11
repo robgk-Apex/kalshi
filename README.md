@@ -6,6 +6,15 @@ directional contracts).
 
 New here? Start with [`SETUP.txt`](SETUP.txt).
 
+## Get a live shareable board (no install)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/robgk-Apex/kalshi/tree/claude/new-session-ww2byg)
+
+Click the button, sign in with GitHub, approve, and Render builds this repo's
+`render.yaml` into a public `https://…` URL that works on any phone or browser —
+no Python, git, or terminal needed. Each visitor gets their own P&L (kept in
+their browser). See [`DEPLOY.md`](DEPLOY.md) for the click-by-click walkthrough.
+
 ## Run modes
 
 ```bash

@@ -11,6 +11,7 @@ services:
     name: kalshi-dashboard
     runtime: docker
     plan: free
+    branch: claude/new-session-ww2byg
     dockerfilePath: ./Dockerfile
     healthCheckPath: /
     autoDeploy: true

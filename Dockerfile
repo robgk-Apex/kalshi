@@ -6,9 +6,9 @@
 #           -e KALSHI_KEY_ID=... -e KALSHI_PRIVATE_KEY="$(cat keys/kalshi.pem)" \
 #           kalshi-dashboard                                # authenticated (adds balance)
 #
-# Deploys default to --public (view-only): live data + suggestions for anyone
-# with the URL, no shared portfolio to collide on. Drop --public below to run
-# the full trading UI (single shared ledger — for a private/solo instance only).
+# Each visitor gets their OWN P&L in their browser (localStorage), so a hosted
+# instance is safe to share while still letting everyone paper-trade their own
+# book. Add --public to the CMD for a pure view-only display (no trading UI).
 # The container must be able to reach api.elections.kalshi.com.
 FROM python:3.12-slim
 
@@ -23,5 +23,5 @@ ENV HOST=0.0.0.0 \
     PORT=8787
 EXPOSE 8787
 
-# View-only shared board by default; set KALSHI_* env vars to authenticate.
-CMD ["python", "scripts/dashboard.py", "--live", "--public"]
+# Live board, per-viewer P&L; set KALSHI_* env vars to add your balance tile.
+CMD ["python", "scripts/dashboard.py", "--live"]
