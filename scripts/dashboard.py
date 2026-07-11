@@ -513,6 +513,19 @@ def make_handler(provider, refresh, public=False):
                             "balance": None, "ledger": None,
                             "updated": datetime.now(timezone.utc).isoformat()}
                 self._send(200, json.dumps(data).encode(), "application/json")
+            elif self.path.startswith("/api/result"):
+                # Real settled outcome for one market, so the browser can grade a
+                # held position accurately even after a reload (read-only).
+                from urllib.parse import urlparse, parse_qs
+                tk = (parse_qs(urlparse(self.path).query).get("ticker") or [""])[0]
+                out = {"ticker": tk, "status": "", "result": ""}
+                try:
+                    m = provider.client.get_market(tk).get("market", {}) or {}
+                    out["status"] = m.get("status", "")
+                    out["result"] = (m.get("result") or "").lower()
+                except Exception as e:
+                    out["error"] = str(e)
+                self._send(200, json.dumps(out).encode(), "application/json")
             else:
                 html = (PAGE.replace("__REFRESH__", str(int(refresh * 1000)))
                             .replace("__VIEWONLY__", "true" if public else "false"))
@@ -767,7 +780,7 @@ PAGE = r"""<!doctype html>
     Contracts settle at $1 (win) or $0 (loss). Entry uses the side's <b>ask</b>; unrealized P&amp;L =
     contracts × (mid − entry). Your positions and P&amp;L live in <b>this browser only</b> — each
     viewer has their own. Educational only; hourly/15-min crypto is close to a coin flip.
-    <span style="opacity:.55">· board build: <b>model-4</b></span>
+    <span style="opacity:.55">· board build: <b>settle-5</b></span>
   </p>
 </div>
 <script>
@@ -805,22 +818,36 @@ function bookMid(book,side){return side==="yes"?(book.yes_bid+book.yes_ask)/2:(b
 function curBook(tk){return rowsById[tk]||lastBook[tk]||null;}
 function recClass(a){return a==="NO DATA"?"hold":/YES/.test(a)?"buyyes":/NO/.test(a)?"buyno":"hold";}
 
-// ---- settlement: a held market that has left the live feed AND is past close
-//      resolves at the market-implied outcome (last yes-mid >= 0.50 -> YES wins).
-function settleClosed(feedSet){
-  const now=Date.now(); let changed=false;
+// ---- settlement: a held market that is no longer trading has settled. Ask the
+//      server for the REAL Kalshi result and grade the position accurately. This
+//      needs only the ticker, so it works even after a page reload (unlike
+//      relying on a remembered close time / last mid).
+let resultPending={};
+function checkSettlements(feed){
+  positions.forEach(function(p){
+    if(feed.has(p.ticker)) return;        // still open/trading
+    if(resultPending[p.ticker]) return;   // a lookup is already in flight
+    resultPending[p.ticker]=true;
+    fetch("/api/result?ticker="+encodeURIComponent(p.ticker))
+      .then(function(r){return r.json();})
+      .then(function(res){
+        resultPending[p.ticker]=false;
+        if(res && (res.result==="yes"||res.result==="no")) settlePosition(p.ticker,res.result);
+      })
+      .catch(function(){resultPending[p.ticker]=false;});
+  });
+}
+function settlePosition(ticker,result){
+  let changed=false;
   for(let i=positions.length-1;i>=0;i--){
-    const p=positions[i], ct=closeTimes[p.ticker];
-    if(feedSet.has(p.ticker)) continue;          // still trading
-    if(!ct || ct>now) continue;                  // not actually closed yet
-    const b=curBook(p.ticker); const yesMid=b?bookMid(b,"yes"):0.5;
-    const won=yesMid>=0.5?"yes":"no";
-    const payout=(p.side===won)?p.contracts:0;
+    const p=positions[i]; if(p.ticker!==ticker) continue;
+    const payout=(p.side===result)?p.contracts:0;   // $1/contract if the side won
     realized+=payout-p.stake;
-    settledHist.unshift({coin:p.coin,label:p.label,side:p.side,won:won,stake:p.stake,payout:payout,pnl:payout-p.stake});
+    settledHist.unshift({coin:p.coin,label:p.label,side:p.side,won:result,
+      stake:p.stake,payout:payout,pnl:payout-p.stake});
     positions.splice(i,1); changed=true;
   }
-  if(changed){persist(); renderPositions();}
+  if(changed){persist(); renderPositions(); renderPnl();}
 }
 
 let failCount=0;
@@ -845,7 +872,7 @@ async function poll(){
     closeTimes[r.ticker]=new Date(r.close_time).getTime();
     if(!seen.has(r.ticker)){seen.add(r.ticker); order2.push(r.ticker);}
   });
-  if(rows.length) settleClosed(feed);   // never settle off an empty warmup/error tick
+  if(rows.length) checkSettlements(feed);  // grade gone markets via real result
   // group into a clean price ladder: cadence, then coin, then strike ascending
   // (so BTC's ≥$63,800 / ≥$63,900 / ≥$64,000 … read in order). Stable, no popping.
   const live=rows.slice().sort(function(a,b){
@@ -934,7 +961,7 @@ function renderPositions(){
     +'<th class="l">Market</th><th class="l">Side</th><th>Stake</th><th>Entry</th><th>Mid now</th><th>Value</th><th>P&amp;L</th><th></th></tr></thead><tbody>';
   positions.forEach(function(p,i){
     const b=curBook(p.ticker); const m=b?bookMid(b,p.side):p.entry, val=p.contracts*m, pnl=val-p.stake;
-    const stale=rowsById[p.ticker]?"":' <span class="hcount">closing</span>';
+    const stale=rowsById[p.ticker]?"":' <span class="hcount">settling…</span>';
     h+='<tr><td class="mkt"><span class="badge">'+p.coin+'</span> '+esc(p.label)+stale+'</td>'
       +'<td class="l"><span class="side '+p.side+'">'+p.side.toUpperCase()+'</span></td>'
       +'<td>'+money(p.stake)+'</td><td>'+p.entry.toFixed(2)+'</td><td>'+m.toFixed(2)+'</td><td>'+money(val)+'</td>'
