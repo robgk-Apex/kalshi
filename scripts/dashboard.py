@@ -336,7 +336,11 @@ class LiveProvider:
         lean_ask = ya if lean_side == "yes" else na
         return {
             "ticker": ticker, "coin": _coin_of(ticker),
-            "title": m.get("title", ticker),
+            # Prefer the strike-bearing subtitle ("$64,000 or above" / "Target
+            # Price: $X") over the full market question so a price is always
+            # present as a fallback for the client.
+            "title": (m.get("subtitle") or m.get("yes_sub_title")
+                      or m.get("title") or ticker),
             "yes_bid": yb, "yes_ask": ya, "no_bid": nb, "no_ask": na,
             "last": last, "volume": vol, "hours_left": hours, "close_time": ct,
             "edge": round(opp.edge, 4) if opp else 0.0,
@@ -763,6 +767,7 @@ PAGE = r"""<!doctype html>
     Contracts settle at $1 (win) or $0 (loss). Entry uses the side's <b>ask</b>; unrealized P&amp;L =
     contracts × (mid − entry). Your positions and P&amp;L live in <b>this browser only</b> — each
     viewer has their own. Educational only; hourly/15-min crypto is close to a coin flip.
+    <span style="opacity:.55">· board build: <b>ladder-2</b></span>
   </p>
 </div>
 <script>
@@ -787,11 +792,14 @@ function fmtStrike(coin,v){v=+v||0;
   return "$"+v.toLocaleString(undefined,{maximumFractionDigits:0});}
 // Headline is the PRICE THRESHOLD (coin shown separately in the badge). Hourly/
 // daily/weekly list a whole ladder of these strikes; 15-min is the one target.
-function marketMain(r){const s=+r.strike||0;
+function priceFromTitle(t){const m=String(t||"").match(/\$?\s*([0-9][0-9,]*\.?[0-9]*)/);
+  return m?parseFloat(m[1].replace(/,/g,"")):0;}
+function strikeOf(r){let s=+r.strike||0; if(s<=0) s=priceFromTitle(r.title); return s;}
+function marketMain(r){const s=strikeOf(r);
   return s>0?("≥ "+fmtStrike(r.coin,s)):(((r.title||"").replace(/ or above.*/,""))||"up/down");}
 function marketSub(r){
   if(!r.spot){return is15(r.ticker)?"target at close":"resolves at close";}
-  const s=+r.strike||0, itm=(s>0&&r.spot>=s);
+  const s=strikeOf(r), itm=(s>0&&r.spot>=s);
   return "spot "+fmtStrike(r.coin,r.spot)+(s>0?' <span class="'+(itm?"pos":"neg")+'">'+(itm?"(YES in the money)":"(NO in the money)")+"</span>":"");}
 function bookMid(book,side){return side==="yes"?(book.yes_bid+book.yes_ask)/2:(book.no_bid+book.no_ask)/2;}
 function curBook(tk){return rowsById[tk]||lastBook[tk]||null;}
@@ -843,7 +851,7 @@ async function poll(){
   const live=rows.slice().sort(function(a,b){
     if(CAD_ORD[a._cad]!==CAD_ORD[b._cad]) return CAD_ORD[a._cad]-CAD_ORD[b._cad];
     if(a.coin!==b.coin) return a.coin<b.coin?-1:1;
-    const sa=+a.strike||0, sb=+b.strike||0; if(sa!==sb) return sa-sb;
+    const sa=strikeOf(a), sb=strikeOf(b); if(sa!==sb) return sa-sb;
     return a.ticker<b.ticker?-1:(a.ticker>b.ticker?1:0);
   });
   if(rows.length || !d.error) renderTable(live);  // don't wipe a good table while warming up
