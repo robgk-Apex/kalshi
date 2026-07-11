@@ -203,16 +203,35 @@ class LiveProvider:
         self._cache = None
         self._cache_at = 0.0
         self._logged = False
+        # Refresh Kalshi in the background so every /api/markets request returns
+        # instantly from cache — the browser's 1s polling never waits on (or
+        # piles up behind) the multi-second crawl. Critical on small hosts.
+        self._thread = threading.Thread(target=self._refresh_loop, daemon=True)
+        self._thread.start()
+
+    def _refresh_loop(self):
+        while True:
+            try:
+                try:
+                    self.ledger.settle(self.client)
+                except Exception:
+                    pass
+                snap = self._fetch()
+                with self._lock:
+                    self._cache = snap
+                    self._cache_at = time.time()
+            except Exception:
+                pass
+            time.sleep(max(1.0, self.min_interval))
 
     def snapshot(self):
         with self._lock:
-            if self._cache and (time.time() - self._cache_at) < self.min_interval:
+            if self._cache:
                 return self._cache
-            self.ledger.settle(self.client)
-            snap = self._fetch()
-            self._cache = snap
-            self._cache_at = time.time()
-            return snap
+        # first background fetch hasn't landed yet — say so without erroring
+        return {"mode": "LIVE", "error": "warming up — fetching live markets…",
+                "balance": None, "rows": [], "ledger": None,
+                "updated": datetime.now(timezone.utc).isoformat()}
 
     def _fetch(self):
         rows, error, balance = [], None, None
@@ -249,9 +268,14 @@ class LiveProvider:
                 if not cursor:
                     break
         rows = [r for r in rows if r]
+        # crypto history is per-coin, so fetch it once per coin (not per row) —
+        # cuts the price-feed calls from ~dozens to ~5 and keeps the crawl quick.
+        pcache = {}
         for r in rows:
-            prices, _ = self._prices_strike(r["ticker"])
-            apply_rec(r, prices, r.get("strike", 0))
+            coin = r["coin"]
+            if coin not in pcache:
+                pcache[coin] = self._prices_strike(r["ticker"])[0]
+            apply_rec(r, pcache[coin], r.get("strike", 0))
         rows.sort(key=lambda r: (r["hours_left"], -abs(r["edge"])))
         if not self._logged:
             self._logged = True
@@ -772,13 +796,21 @@ function settleClosed(feedSet){
   if(changed){persist(); renderPositions();}
 }
 
+let failCount=0;
 async function poll(){
   let d;
-  try{ d=await (await fetch("/api/markets")).json(); }
-  catch(e){ setStatus("err","disconnected"); return; }
+  try{
+    const ctl=new AbortController(); const to=setTimeout(function(){ctl.abort();},9000);
+    const res=await fetch("/api/markets",{signal:ctl.signal}); clearTimeout(to);
+    d=await res.json();
+  }catch(e){
+    failCount++; if(failCount>=3) setStatus("err","reconnecting…");
+    return;   // keep showing the last good board; don't blank on one slow tick
+  }
+  failCount=0;
   setStatus(d.mode==="LIVE"?"live":(d.mode==="DEMO"?"demo":"err"),
             d.mode+(d.mode==="DEMO"?" (synthetic)":"")+" · "+new Date(d.updated).toLocaleTimeString());
-  document.getElementById("src").textContent=d.error?("API note: "+d.error):"";
+  document.getElementById("src").textContent=d.error?("note: "+d.error):"";
   const rows=(d.rows||[]); const feed=new Set();
   rows.forEach(function(r){
     r._cad=cadence(r); feed.add(r.ticker);
@@ -786,13 +818,13 @@ async function poll(){
     closeTimes[r.ticker]=new Date(r.close_time).getTime();
     if(!seen.has(r.ticker)){seen.add(r.ticker); order2.push(r.ticker);}
   });
-  settleClosed(feed);
+  if(rows.length) settleClosed(feed);   // never settle off an empty warmup/error tick
   // keep only live tickers, stable-sorted by cadence then ticker (no popping)
   const live=rows.slice().sort(function(a,b){
     if(CAD_ORD[a._cad]!==CAD_ORD[b._cad]) return CAD_ORD[a._cad]-CAD_ORD[b._cad];
     return a.ticker<b.ticker?-1:(a.ticker>b.ticker?1:0);
   });
-  renderTable(live);
+  if(rows.length || !d.error) renderTable(live);  // don't wipe a good table while warming up
   renderPositions(); renderPnl();
 }
 
@@ -918,8 +950,11 @@ document.getElementById("theme").addEventListener("click",function(){
   document.documentElement.setAttribute("data-theme",next);
 });
 if(VIEW_ONLY) document.body.classList.add("viewonly");
-renderPositions(); renderPnl(); clockTick(); poll();
-setInterval(poll,REFRESH); setInterval(clockTick,1000);
+// self-scheduling loop: never start a new poll until the last one finishes,
+// so slow ticks can't pile up and knock the connection over.
+async function pollLoop(){ try{await poll();}catch(e){} setTimeout(pollLoop, REFRESH); }
+renderPositions(); renderPnl(); clockTick(); pollLoop();
+setInterval(clockTick,1000);
 </script>
 </body></html>"""
 
