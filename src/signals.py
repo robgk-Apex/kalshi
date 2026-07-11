@@ -1,17 +1,19 @@
-"""Educated buy/sell suggestion for short-term up/down crypto markets.
+"""Outcome prediction for short-term crypto strike markets.
 
 Turns real technical indicators — trend (moving averages), momentum, distance
-to the strike, volatility, and time to settlement — plus the book's own edge
-into a transparent recommendation:
+to the strike, volatility, and time to settlement — into a transparent call of
+the likely CORRECT outcome:
 
-    BUY YES  (bet the coin finishes above the strike / up)
-    BUY NO   (bet it finishes below / down)
-    HOLD     (no clear, priced-in edge — sit out)
+    YES      (predict the coin finishes at/above the strike — up)
+    NO       (predict it finishes below — down)
+    TOSS-UP  (too close to call — near a coin flip)
 
-Every recommendation carries a 0-100 confidence and a short list of the reasons
-behind it, so it's an explainable read of price action rather than a black box.
+This predicts the result, NOT a trade's value: it deliberately ignores how the
+contract is priced (no edge/arbitrage judgment), so a likely YES is called YES
+even when the ask is rich. Every call carries a 0-100 confidence and a short
+list of the reasons behind it, so it's an explainable read, not a black box.
 
-HONESTY: hourly up/down crypto is close to a coin flip and any single indicator
+HONESTY: hourly/15-min crypto is close to a coin flip and any single indicator
 is weak. The value here is combining several and being explicit about the
 reasoning and confidence — it is NOT a guarantee. Treat low-confidence calls as
 noise.
@@ -60,15 +62,13 @@ def strike_from_market(market: dict) -> float:
                 pass
     return 0.0
 
-# Score needed before we'll suggest a trade at all (below this -> HOLD).
+# How strong the directional lean must be before we call a side (else TOSS-UP).
 DECISION_THRESHOLD = 25.0
-# Don't recommend buying a contract richer than this (little payout left).
-MAX_ENTRY = 0.85
 
 
 @dataclass
 class Recommendation:
-    action: str            # "BUY YES" | "BUY NO" | "HOLD"
+    action: str            # "YES" | "NO" | "TOSS-UP"
     side: str              # "yes" | "no" | ""
     confidence: int        # 0-100
     score: float           # signed: + favors YES/up, - favors NO/down
@@ -105,14 +105,18 @@ def indicators_from_series(prices: List[float], strike: float) -> Optional[dict]
     }
 
 
-def recommend(ind: Optional[dict], yes_ask: float, no_ask: float,
-              hours_to_settle: float, edge: float = 0.0) -> Recommendation:
-    """Combine indicators + book edge into a BUY YES / BUY NO / HOLD call.
+def recommend(ind: Optional[dict], yes_ask: float = 0.0, no_ask: float = 0.0,
+              hours_to_settle: float = 1.0) -> Recommendation:
+    """Predict the CORRECT outcome: will the coin finish at/above the strike?
 
-    A positive score favors YES (price up / above strike); negative favors NO.
+    This is a pure directional read of price action — distance to the strike,
+    trend, momentum, room to move, and time left. It is NOT a value/arbitrage
+    judgment: it does NOT care how the contract is priced, so a very likely YES
+    is still called YES even at a rich ask. A positive score favors YES (finishes
+    above / up); negative favors NO. TOSS-UP when it's genuinely near a coin flip.
     """
     if not ind:
-        return Recommendation("HOLD", "", 0, 0.0, ["No price data available"])
+        return Recommendation("TOSS-UP", "", 0, 0.0, ["No price data yet"])
 
     score = 0.0
     reasons: List[str] = []
@@ -164,23 +168,15 @@ def recommend(ind: Optional[dict], yes_ask: float, no_ask: float,
         score *= 0.8
         reasons.append(f"{hours_to_settle:.1f}h out — more can change")
 
-    # 6) Book edge (fair value vs ask) reinforces a mispriced side.
-    if edge and edge > 0:
-        reasons.append(f"Book edge {edge * 100:.1f}%")
-
     side = "yes" if score > 0 else "no"
-    ask = yes_ask if side == "yes" else no_ask
     confidence = int(min(95.0, abs(score)))
 
-    if abs(score) >= DECISION_THRESHOLD and 0 < ask <= MAX_ENTRY:
-        action = "BUY YES" if side == "yes" else "BUY NO"
-        if edge and edge > 0:
-            confidence = min(97, confidence + 8)
+    # Call the more-likely-correct side once the lean is clear enough. Price is
+    # irrelevant here — we're predicting the outcome, not hunting for value.
+    if abs(score) >= DECISION_THRESHOLD:
+        action = "YES" if side == "yes" else "NO"
         return Recommendation(action, side, confidence, round(score, 1), reasons[:4])
 
-    # Otherwise HOLD — lead with why we're sitting out.
-    if ask and ask > MAX_ENTRY:
-        why = f"Ask ${ask:.2f} too rich for the payout"
-    else:
-        why = "Signals are mixed — no clear edge"
-    return Recommendation("HOLD", "", confidence, round(score, 1), [why] + reasons[:3])
+    # Genuinely too close to call.
+    return Recommendation("TOSS-UP", "", confidence, round(score, 1),
+                          ["Too close to call — near a coin flip"] + reasons[:3])
