@@ -52,10 +52,10 @@ def build_rec(prices, strike, yes_ask, no_ask, hours):
         r = recommend(indicators_from_series(prices, strike),
                       yes_ask, no_ask, hours)
         return {"action": r.action, "side": r.side, "conf": r.confidence,
-                "reasons": r.reasons, "prob": r.probability}
+                "reasons": r.reasons, "prob": r.probability, "ev": r.ev}
     except Exception:
         return {"action": "NO DATA", "side": "", "conf": 0,
-                "reasons": ["not enough price history yet"], "prob": 0.5}
+                "reasons": ["not enough price history yet"], "prob": 0.5, "ev": 0.0}
 
 
 def apply_rec(row, prices, strike):
@@ -706,6 +706,9 @@ PAGE = r"""<!doctype html>
   .confbar i{display:block;height:100%;background:var(--accent)}
   .confbar.buyyes i{background:var(--yes)} .confbar.buyno i{background:var(--no)}
   .confn{font:600 11px var(--mono);color:var(--muted)}
+  .ev{font:700 10px var(--mono);padding:2px 6px;border-radius:5px;white-space:nowrap}
+  .ev.good{color:var(--yes);background:color-mix(in srgb,var(--yes) 15%,transparent)}
+  .ev.bad{color:var(--no);background:color-mix(in srgb,var(--no) 13%,transparent)}
   .why{text-align:left;font-size:12px;color:var(--muted);max-width:300px;line-height:1.4}
   .why b{color:var(--ink);font-weight:600}
   .take{display:inline-flex;gap:6px;justify-content:flex-end}
@@ -780,7 +783,7 @@ PAGE = r"""<!doctype html>
     Contracts settle at $1 (win) or $0 (loss). Entry uses the side's <b>ask</b>; unrealized P&amp;L =
     contracts × (mid − entry). Your positions and P&amp;L live in <b>this browser only</b> — each
     viewer has their own. Educational only; hourly/15-min crypto is close to a coin flip.
-    <span style="opacity:.55">· board build: <b>settle-5</b></span>
+    <span style="opacity:.55">· board build: <b>calibrated-6</b></span>
   </p>
 </div>
 <script>
@@ -817,6 +820,12 @@ function marketSub(r){
 function bookMid(book,side){return side==="yes"?(book.yes_bid+book.yes_ask)/2:(book.no_bid+book.no_ask)/2;}
 function curBook(tk){return rowsById[tk]||lastBook[tk]||null;}
 function recClass(a){return a==="NO DATA"?"hold":/YES/.test(a)?"buyyes":/NO/.test(a)?"buyno":"hold";}
+function evChip(rc){
+  if(!rc||rc.action==="NO DATA"||typeof rc.ev!=="number") return "";
+  const pct=Math.round(rc.ev*100), good=rc.ev>0;
+  return '<span class="ev '+(good?"good":"bad")+'" title="Expected value of taking this side at its ask — negative means the price is too high for the odds">'
+    +(good?"+":"")+pct+'% EV</span>';
+}
 
 // ---- settlement: a held market that is no longer trading has settled. Ask the
 //      server for the REAL Kalshi result and grade the position accurately. This
@@ -910,6 +919,7 @@ function renderTable(live){
       +'<td class="px"><span class="ask">'+r.no_ask.toFixed(2)+'</span><div class="bidask">'+r.no_bid.toFixed(2)+' / '+r.no_ask.toFixed(2)+'</div></td>'
       +'<td><span class="cd cdcell">--</span></td>'
       +'<td><div class="rec"><span class="pill '+cls+'">'+rc.action+'</span>'
+        +evChip(rc)
         +'<span class="conf"><span class="confbar '+cls+'"><i style="width:'+conf+'%"></i></span><span class="confn">'+conf+'</span></span></div></td>'
       +'<td class="why"><b>'+esc(why1)+'</b>'+(whyRest?'<br>'+esc(whyRest):'')+'</td>'
       +'<td>'+trade+'</td></tr>';

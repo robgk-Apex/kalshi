@@ -61,24 +61,35 @@ class TestStrikeFromMarket(unittest.TestCase):
 class TestRecommend(unittest.TestCase):
 
     def test_bullish_predicts_yes(self):
-        r = recommend(indicators_from_series(rising(), 103), 0.55, 0.47, 1.0)
-        self.assertEqual(r.action, "YES")
+        # Chart bullish and the market agrees (priced ~68% YES) -> YES.
+        r = recommend(indicators_from_series(rising(), 103), 0.68, 0.34, 1.0)
+        self.assertIn(r.action, ("YES", "LEAN YES"))
         self.assertEqual(r.side, "yes")
-        self.assertGreater(r.confidence, 50)
+        self.assertGreater(r.confidence, 40)
         self.assertTrue(r.reasons)
 
     def test_bearish_predicts_no(self):
-        r = recommend(indicators_from_series(falling(), 105), 0.45, 0.55, 1.0)
-        self.assertEqual(r.action, "NO")
+        r = recommend(indicators_from_series(falling(), 105), 0.32, 0.68, 1.0)
+        self.assertIn(r.action, ("NO", "LEAN NO"))
         self.assertEqual(r.side, "no")
         self.assertGreater(r.confidence, 40)
 
-    def test_rich_ask_still_predicts_yes(self):
-        # A likely YES is called YES regardless of price — this is a prediction,
-        # not a value/arbitrage judgment, so a $0.90 ask does NOT force a pass.
-        r = recommend(indicators_from_series(rising(), 103), 0.90, 0.12, 1.0)
-        self.assertEqual(r.action, "YES")
-        self.assertFalse(any("too rich" in s for s in r.reasons))
+    def test_market_odds_anchor_the_call(self):
+        # A flat chart but a market priced strongly YES -> predict YES; strongly
+        # NO -> predict NO. The market's own odds are the base forecast.
+        flat = [100 + (0.05 if i % 2 else -0.05) for i in range(30)]
+        ind = indicators_from_series(flat, 100)
+        yes_mkt = recommend(ind, 0.85, 0.17, 1.0)   # market ~84% YES
+        self.assertEqual(yes_mkt.side, "yes")
+        no_mkt = recommend(ind, 0.15, 0.87, 1.0)    # market ~14% YES
+        self.assertEqual(no_mkt.side, "no")
+
+    def test_ev_flags_overpriced(self):
+        # A near-coin-flip bought at a rich ask is negative expected value.
+        flat = [100 + (0.05 if i % 2 else -0.05) for i in range(30)]
+        r = recommend(indicators_from_series(flat, 100), 0.85, 0.17, 1.0)
+        self.assertLess(r.ev, 0.0)
+        self.assertTrue(any("EV" in s for s in r.reasons))
 
     def test_flat_market_still_leans(self):
         # A near-coin-flip with data still commits to a side (never a toss-up).
@@ -93,13 +104,14 @@ class TestRecommend(unittest.TestCase):
         self.assertEqual(r.side, "")
         self.assertEqual(r.confidence, 0)
 
-    def test_price_does_not_change_the_call(self):
-        # Same indicators, wildly different asks -> identical prediction & score.
+    def test_chart_can_tilt_but_market_leads(self):
+        # With no market prices, the chart alone drives the call...
         ind = indicators_from_series(rising(), 103)
-        cheap = recommend(ind, 0.10, 0.92, 1.0)
-        rich = recommend(ind, 0.92, 0.10, 1.0)
-        self.assertEqual(cheap.action, rich.action)
-        self.assertEqual(cheap.score, rich.score)
+        chart_only = recommend(ind)
+        self.assertEqual(chart_only.side, "yes")
+        # ...but a market priced hard the other way pulls the blend toward it.
+        against = recommend(ind, 0.08, 0.94, 1.0)   # market ~7% YES
+        self.assertLess(against.probability, chart_only.probability)
 
     def test_weak_conviction_is_labelled_lean(self):
         # Below the decision threshold we still pick a side, just label it LEAN.

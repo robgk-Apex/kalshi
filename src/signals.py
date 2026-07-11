@@ -70,24 +70,42 @@ DECISION_THRESHOLD = 25.0
 DEFAULT_INTERVAL_MIN = 5.0
 
 
+# How much to trust the market's own price vs the chart. The market price is the
+# best available forecast of the outcome, so it gets the majority weight; the
+# chart tilts it rather than overriding it.
+MARKET_WEIGHT = 0.72
+CHART_WEIGHT = 1.0 - MARKET_WEIGHT
+
+
 @dataclass
 class Recommendation:
-    action: str            # "YES" | "NO" | "LEAN YES" | "LEAN NO"
+    action: str            # "YES" | "NO" | "LEAN YES" | "LEAN NO" | "NO DATA"
     side: str              # "yes" | "no"
     confidence: int        # 0-100
     score: float           # signed: + favors YES/up, - favors NO/down
     reasons: List[str] = field(default_factory=list)
-    probability: float = 0.5   # model P(finishes at/above strike), 0-1
+    probability: float = 0.5   # blended P(finishes at/above strike), 0-1
+    ev: float = 0.0            # expected value per $1 staked on the called side
 
     def as_dict(self) -> dict:
         return {"action": self.action, "side": self.side,
                 "confidence": self.confidence, "score": self.score,
-                "reasons": self.reasons, "probability": self.probability}
+                "reasons": self.reasons, "probability": self.probability,
+                "ev": self.ev}
 
 
 # ── chart-reading primitives ────────────────────────────────────────────────
 def _norm_cdf(x: float) -> float:
     return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+
+
+def _logit(p: float) -> float:
+    p = min(0.999, max(0.001, p))
+    return math.log(p / (1.0 - p))
+
+
+def _sigmoid(x: float) -> float:
+    return 1.0 / (1.0 + math.exp(-max(-30.0, min(30.0, x))))
 
 
 def _mean(xs: List[float]) -> float:
@@ -183,17 +201,21 @@ def indicators_from_series(prices: List[float], strike: float) -> Optional[dict]
 def recommend(ind: Optional[dict], yes_ask: float = 0.0, no_ask: float = 0.0,
               hours_to_settle: float = 1.0,
               interval_minutes: float = DEFAULT_INTERVAL_MIN) -> Recommendation:
-    """Predict whether the coin finishes AT/ABOVE the strike, the way a trader
-    reads a chart — and always commit to the more-likely side.
+    """Predict whether the coin finishes AT/ABOVE the strike.
 
-    Backbone is a volatility-scaled probability-to-strike model (how options
-    desks read 'probability in the money'): the gap to the strike is measured in
-    units of the expected move over the time left — recent per-candle volatility
-    σ scaled by √(candles remaining) — giving P(finish ≥ strike) via the normal
-    CDF. RSI and MACD then nudge that probability (overbought/oversold pullback
-    risk, trend confirmation). Price of the contract is ignored — this predicts
-    the outcome, not a bet's value. Even a near-coin-flip returns a LEAN, not a
-    refusal.
+    Two forecasts are blended in log-odds:
+      • the MARKET's own implied probability (from the YES/NO prices) — the best
+        available forecast of the outcome, so it carries the majority weight; and
+      • a CHART model — a volatility-scaled probability-to-strike (how options
+        desks read 'probability in the money': gap to strike in units of the
+        expected move over the time left), nudged by RSI and MACD.
+    The chart tilts the market's odds rather than overriding them, which stops
+    the predictor from confidently betting against a fairly-priced market.
+
+    Using the price as a probability estimate is NOT arbitrage — it's using the
+    best forecast to predict the outcome. `ev` reports the expected value of
+    entering the called side at its ask, so a bad-value click is visible. Always
+    commits to a side when there's data; NO DATA only when history is missing.
     """
     # The ONLY non-directional outcome: we don't have enough history to read.
     if not ind:
@@ -206,8 +228,10 @@ def recommend(ind: Optional[dict], yes_ask: float = 0.0, no_ask: float = 0.0,
     # 1) Volatility-scaled probability the coin finishes at/above the strike.
     sigma_step = ind.get("sigma_step") or 0.0
     steps = max(1.0, hours_to_settle * 60.0 / max(1e-6, interval_minutes))
-    # floor σ so a briefly-flat series doesn't imply false certainty
-    sigma_h = max(1e-4, sigma_step * math.sqrt(steps))
+    # Recent realized vol UNDERstates the move to come (quiet != quiet ahead), so
+    # buffer it and floor it — this is what stops false 99% calls on coin flips.
+    sigma_h = sigma_step * math.sqrt(steps) * 1.3
+    sigma_h = max(sigma_h, 0.006)
     drift_h = ind.get("mu_step", 0.0) * steps
     drift_h = max(-0.5 * sigma_h, min(0.5 * sigma_h, drift_h))  # damp noisy drift
     log_gap = math.log(price / strike) if price > 0 and strike > 0 else 0.0
@@ -249,18 +273,45 @@ def recommend(ind: Optional[dict], yes_ask: float = 0.0, no_ask: float = 0.0,
     elif t < -0.3:
         reasons.append(f"Downtrend {t:.1f}% vs short MA")
 
-    # Fold the nudges back into a probability and commit to the favored side.
-    p = _norm_cdf(z)
+    # Chart model's probability (bounded — it's noisier than the market).
+    p_chart = max(0.05, min(0.95, _norm_cdf(z)))
+
+    # Market's own implied P(YES). Buying NO at no_ask ≈ selling YES at 1-no_ask,
+    # so yes_mid ≈ (yes_ask + (1 - no_ask)) / 2 — the crowd's forecast.
+    p_market = None
+    if yes_ask > 0 and no_ask > 0:
+        p_market = max(0.02, min(0.98, (yes_ask + (1.0 - no_ask)) / 2.0))
+    elif yes_ask > 0:
+        p_market = max(0.02, min(0.98, yes_ask))
+    elif no_ask > 0:
+        p_market = max(0.02, min(0.98, 1.0 - no_ask))
+
+    if p_market is not None:
+        p = _sigmoid(MARKET_WEIGHT * _logit(p_market) + CHART_WEIGHT * _logit(p_chart))
+        reasons.insert(0, f"Market odds ~{p_market * 100:.0f}% · chart read ~{p_chart * 100:.0f}%")
+    else:
+        p = p_chart
     p = max(0.02, min(0.98, p))
+
     score = (p - 0.5) * 200.0             # -100 (NO) .. +100 (YES)
     side = "yes" if p >= 0.5 else "no"
     confidence = int(min(97.0, abs(score)))
+    p_side = p if side == "yes" else 1.0 - p
 
-    lead = f"Model: ~{p * 100:.0f}% to finish at/above the strike"
+    # Expected value of entering the called side at its ask ($1 payout if right).
+    entry = yes_ask if side == "yes" else no_ask
+    ev = (p_side / entry - 1.0) if entry and entry > 0 else 0.0
+    lead = (f"Best estimate: ~{p_side * 100:.0f}% "
+            f"{'YES — finishes at/above strike' if side == 'yes' else 'NO — finishes below strike'}")
+    reasons = [lead] + reasons[:3]
+    if entry and entry > 0:
+        tag = "good value" if ev > 0 else "overpriced — likely -EV"
+        reasons.append(f"Entry ${entry:.2f} → EV {ev * 100:+.0f}% ({tag})")
+
     firm = confidence >= DECISION_THRESHOLD
     if side == "yes":
         action = "YES" if firm else "LEAN YES"
     else:
         action = "NO" if firm else "LEAN NO"
     return Recommendation(action, side, confidence, round(score, 1),
-                          [lead] + reasons[:3], round(p, 3))
+                          reasons, round(p, 3), round(ev, 3))

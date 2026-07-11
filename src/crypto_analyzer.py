@@ -52,8 +52,8 @@ class CryptoAnalyzer:
     def __init__(self):
         self._price_cache: Dict[str, Tuple[float, float]] = {}  # coin_id -> (price, timestamp)
         self._history_cache: Dict[str, Tuple[list, float]] = {}  # coin_id -> (prices, timestamp)
-        self._cache_ttl = 120  # seconds - cache prices longer to avoid rate limits
-        self._history_ttl = 120  # seconds
+        self._cache_ttl = 15   # seconds - keep spot fresh so distance-to-strike is current
+        self._history_ttl = 60  # seconds - candles change slowly
         self._last_request = 0
         self._min_request_gap = 0.3  # Coinbase public API is generous
 
