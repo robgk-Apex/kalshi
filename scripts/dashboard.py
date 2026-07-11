@@ -276,6 +276,9 @@ class LiveProvider:
             if coin not in pcache:
                 pcache[coin] = self._prices_strike(r["ticker"])[0]
             apply_rec(r, pcache[coin], r.get("strike", 0))
+            ph = pcache[coin]
+            if ph:
+                r["spot"] = ph[-1]   # current coin price, so strikes read in context
         rows.sort(key=lambda r: (r["hours_left"], -abs(r["edge"])))
         if not self._logged:
             self._logged = True
@@ -368,6 +371,10 @@ class DemoProvider:
         for r in rows:
             prices, strike = self.client.ta(r["ticker"])
             apply_rec(r, prices, strike)
+            if not r.get("strike"):
+                r["strike"] = strike
+            if prices:
+                r["spot"] = prices[-1]
         rows.sort(key=lambda r: (r["hours_left"], -abs(r["edge"])))
         mids = {r["ticker"]: {"yes": (r["yes_bid"] + r["yes_ask"]) / 2,
                               "no": (r["no_bid"] + r["no_ask"]) / 2} for r in rows}
@@ -662,6 +669,7 @@ PAGE = r"""<!doctype html>
   .mkt{text-align:left}
   .mkt .coin{display:inline-flex;align-items:center;gap:8px}
   .badge{font:700 11px/1 var(--mono);padding:4px 7px;border-radius:6px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);min-width:44px;display:inline-block;text-align:center}
+  .mkt .thresh{font-weight:640;font-variant-numeric:tabular-nums}
   .mkt .sub{color:var(--muted);font-size:12.5px;margin-top:3px}
   .cad{font:600 10.5px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:4px 8px;border-radius:20px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
   .cad.c15{color:#c58bff;border-color:color-mix(in srgb,#c58bff 40%,var(--line))}
@@ -733,9 +741,11 @@ PAGE = r"""<!doctype html>
     </div>
     <span class="count" id="rowcount"></span>
   </div>
-  <p class="note">Live Kalshi order books, refreshed every second by this server. <b id="src"></b>
-    Suggestions are an educated read of price action — <b>not advice</b>. Take a side to track
-    <b>your own</b> P&amp;L (kept in your browser); markets settle into realized P&amp;L when they close.</p>
+  <p class="note">Each row is one <b>price threshold</b> — will the coin be <b>at or above</b> that price
+    at settlement? Hourly / daily / weekly list a whole <b>ladder of strikes</b> per coin (pick the price
+    you want); 15-min is the single at-the-money target. Live Kalshi books, refreshed every second. <b id="src"></b>
+    Suggestions are an educated read — <b>not advice</b>. Take a side to track <b>your own</b> P&amp;L
+    (kept in your browser); it settles into realized P&amp;L at close.</p>
   <div class="tablewrap">
     <table>
       <thead><tr>
@@ -772,8 +782,17 @@ const CAD_LABEL={"15m":"15-MIN",hourly:"HOURLY",daily:"DAILY",weekly:"WEEKLY"};
 const CAD_CLASS={"15m":"c15",hourly:"cadhourly",daily:"caddaily",weekly:"cadweekly"};
 const CAD_ORD={"15m":0,hourly:1,daily:2,weekly:3};
 function is15(tk){return /15M/.test(tk);}
-function fmtTitle(r){return is15(r.ticker)?"Above target at close":(r.title||"").replace(/ or above.*/,"")+" or above";}
-function strikeLabel(r){if(is15(r.ticker))return r.title||("Target $"+(r.strike||0));return "Strike "+(r.title||"").replace(/ or above.*/,"");}
+function fmtStrike(coin,v){v=+v||0;
+  if(coin==="XRP"||coin==="DOGE") return "$"+v.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:5});
+  return "$"+v.toLocaleString(undefined,{maximumFractionDigits:0});}
+// Headline is the PRICE THRESHOLD (coin shown separately in the badge). Hourly/
+// daily/weekly list a whole ladder of these strikes; 15-min is the one target.
+function marketMain(r){const s=+r.strike||0;
+  return s>0?("≥ "+fmtStrike(r.coin,s)):(((r.title||"").replace(/ or above.*/,""))||"up/down");}
+function marketSub(r){
+  if(!r.spot){return is15(r.ticker)?"target at close":"resolves at close";}
+  const s=+r.strike||0, itm=(s>0&&r.spot>=s);
+  return "spot "+fmtStrike(r.coin,r.spot)+(s>0?' <span class="'+(itm?"pos":"neg")+'">'+(itm?"(YES in the money)":"(NO in the money)")+"</span>":"");}
 function bookMid(book,side){return side==="yes"?(book.yes_bid+book.yes_ask)/2:(book.no_bid+book.no_ask)/2;}
 function curBook(tk){return rowsById[tk]||lastBook[tk]||null;}
 function recClass(a){return a==="BUY YES"?"buyyes":a==="BUY NO"?"buyno":"hold";}
@@ -819,9 +838,12 @@ async function poll(){
     if(!seen.has(r.ticker)){seen.add(r.ticker); order2.push(r.ticker);}
   });
   if(rows.length) settleClosed(feed);   // never settle off an empty warmup/error tick
-  // keep only live tickers, stable-sorted by cadence then ticker (no popping)
+  // group into a clean price ladder: cadence, then coin, then strike ascending
+  // (so BTC's ≥$63,800 / ≥$63,900 / ≥$64,000 … read in order). Stable, no popping.
   const live=rows.slice().sort(function(a,b){
     if(CAD_ORD[a._cad]!==CAD_ORD[b._cad]) return CAD_ORD[a._cad]-CAD_ORD[b._cad];
+    if(a.coin!==b.coin) return a.coin<b.coin?-1:1;
+    const sa=+a.strike||0, sb=+b.strike||0; if(sa!==sb) return sa-sb;
     return a.ticker<b.ticker?-1:(a.ticker>b.ticker?1:0);
   });
   if(rows.length || !d.error) renderTable(live);  // don't wipe a good table while warming up
@@ -846,8 +868,8 @@ function renderTable(live){
       +'<button class="y" onclick="take(\''+r.ticker+'\',\'yes\','+r.yes_ask+')">YES '+r.yes_ask.toFixed(2)+'</button>'
       +'<button class="n" onclick="take(\''+r.ticker+'\',\'no\','+r.no_ask+')">NO '+r.no_ask.toFixed(2)+'</button></div>';
     return '<tr data-t="'+r.ticker+'">'
-      +'<td class="mkt"><span class="coin"><span class="badge">'+r.coin+'</span><span>'+fmtTitle(r)+'</span></span>'
-        +'<div class="sub">'+strikeLabel(r)+'</div></td>'
+      +'<td class="mkt"><span class="coin"><span class="badge">'+r.coin+'</span><span class="thresh">'+marketMain(r)+'</span></span>'
+        +'<div class="sub">'+marketSub(r)+'</div></td>'
       +'<td class="mkt"><span class="cad '+CAD_CLASS[r._cad]+'">'+CAD_LABEL[r._cad]+'</span></td>'
       +'<td class="px"><span class="ask">'+r.yes_ask.toFixed(2)+'</span><div class="bidask">'+r.yes_bid.toFixed(2)+' / '+r.yes_ask.toFixed(2)+'</div></td>'
       +'<td class="px"><span class="ask">'+r.no_ask.toFixed(2)+'</span><div class="bidask">'+r.no_bid.toFixed(2)+' / '+r.no_ask.toFixed(2)+'</div></td>'
@@ -880,11 +902,11 @@ function take(tk,side,ask){
   const r=rowsById[tk]; if(!r){alert("Market no longer open.");return;}
   if(!(ask>0)){alert("No "+side.toUpperCase()+" ask on this market.");return;}
   const def=localStorage.getItem("kalshi_amt")||"25";
-  const raw=prompt("How much to put on "+side.toUpperCase()+" — "+r.coin+" "+strikeLabel(r)+"?\nEntry $"+ask.toFixed(2)+" per contract. Enter stake in $:",def);
+  const raw=prompt("How much to put on "+side.toUpperCase()+" — "+r.coin+" "+marketMain(r)+" at close?\nEntry $"+ask.toFixed(2)+" per contract. Enter stake in $:",def);
   if(raw===null)return; const stake=parseFloat(raw);
   if(!(stake>0)){alert("Enter a positive dollar amount.");return;}
   localStorage.setItem("kalshi_amt",Math.round(stake));
-  positions.push({ticker:tk,coin:r.coin,label:strikeLabel(r),cad:r._cad,side:side,entry:ask,stake:stake,contracts:stake/ask});
+  positions.push({ticker:tk,coin:r.coin,label:marketMain(r),cad:r._cad,side:side,entry:ask,stake:stake,contracts:stake/ask});
   persist(); renderPositions(); renderPnl();
 }
 window.take=take;
