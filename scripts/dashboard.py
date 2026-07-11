@@ -436,7 +436,7 @@ class _DemoClient:
 # ──────────────────────────────────────────────────────────────────────────
 # Web server
 # ──────────────────────────────────────────────────────────────────────────
-def make_handler(provider, refresh):
+def make_handler(provider, refresh, public=False):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *a):
             pass
@@ -449,6 +449,10 @@ def make_handler(provider, refresh):
             self.wfile.write(body)
 
         def do_POST(self):
+            if public:  # view-only board: no shared-portfolio writes
+                self._send(403, b'{"ok":false,"error":"view-only"}',
+                           "application/json")
+                return
             if self.path.startswith("/api/take"):
                 n = int(self.headers.get("Content-Length", 0))
                 try:
@@ -475,7 +479,8 @@ def make_handler(provider, refresh):
                             "updated": datetime.now(timezone.utc).isoformat()}
                 self._send(200, json.dumps(data).encode(), "application/json")
             else:
-                html = PAGE.replace("__REFRESH__", str(int(refresh * 1000)))
+                html = (PAGE.replace("__REFRESH__", str(int(refresh * 1000)))
+                            .replace("__VIEWONLY__", "true" if public else "false"))
                 self._send(200, html.encode(), "text/html; charset=utf-8")
 
     return Handler
@@ -533,6 +538,9 @@ def main():
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8787)))
     parser.add_argument("--refresh", type=float, default=1.0,
                         help="Browser refresh interval in seconds (default 1)")
+    parser.add_argument("--public", action="store_true",
+                        help="View-only: share the live board with others; hide "
+                             "the Take/Clear/P&L trading UI (no shared portfolio)")
     args = parser.parse_args()
 
     os.makedirs("logs", exist_ok=True)
@@ -549,8 +557,10 @@ def main():
         sys.exit(1)
 
     server = ThreadingHTTPServer((args.host, args.port),
-                                 make_handler(provider, args.refresh))
+                                 make_handler(provider, args.refresh, args.public))
     shown = "localhost" if args.host in ("127.0.0.1", "0.0.0.0") else args.host
+    if args.public:
+        print("[dashboard] PUBLIC view-only — trading UI disabled, safe to share")
     print(f"[dashboard] open http://{shown}:{args.port}  (Ctrl+C to stop)")
     try:
         server.serve_forever()
@@ -654,7 +664,7 @@ PAGE = r"""<!doctype html>
   <div class="stat"><div class="lbl">Markets</div><div class="val" id="s-count">—</div><div class="foot">up/down contracts</div></div>
   <div class="stat"><div class="lbl">Suggestions</div><div class="val up" id="s-sig">—</div><div class="foot">BUY YES / BUY NO</div></div>
   <div class="stat"><div class="lbl">Best edge</div><div class="val" id="s-edge">—</div><div class="foot">fair − ask</div></div>
-  <div class="stat"><div class="lbl">Open trades</div><div class="val" id="s-open">0</div><div class="foot">you're holding</div></div>
+  <div class="stat" id="opentrades"><div class="lbl">Open trades</div><div class="val" id="s-open">0</div><div class="foot">you're holding</div></div>
   <div class="stat"><div class="lbl">Balance</div><div class="val" id="s-bal">—</div><div class="foot">Kalshi account</div></div>
 </section>
 
@@ -671,12 +681,12 @@ PAGE = r"""<!doctype html>
 
 <div class="tablewrap"><div class="scroll"><table>
   <thead><tr><th class="l">Market</th><th>Coin</th><th>YES bid/ask</th><th>NO bid/ask</th>
-    <th>Last</th><th>Vol</th><th>Closes in</th><th>Edge</th><th>Suggestion</th><th class="l">Trade</th></tr></thead>
+    <th>Last</th><th>Vol</th><th>Closes in</th><th>Edge</th><th>Suggestion</th><th class="l tradecol">Trade</th></tr></thead>
   <tbody id="rows"><tr><td class="l mut" colspan="10">Loading…</td></tr></tbody>
 </table></div></div>
 
-<div class="section-h"><h2>My trades</h2><span class="rule"></span></div>
-<div class="tablewrap"><div class="scroll"><table>
+<div class="section-h mytrades"><h2>My trades</h2><span class="rule"></span></div>
+<div class="tablewrap mytrades"><div class="scroll"><table>
   <thead><tr><th class="l">Market</th><th>Side</th><th>Entry</th><th>Invested</th><th>Qty</th><th>Now / Result</th><th>P&amp;L</th><th class="l">Status</th></tr></thead>
   <tbody id="ledger"><tr><td class="empty l" colspan="8">No trades yet — click <b>Take</b> on a market above.</td></tr></tbody>
 </table></div></div>
@@ -685,6 +695,7 @@ PAGE = r"""<!doctype html>
 </div>
 <script>
 const REFRESH=parseInt("__REFRESH__");
+const VIEW_ONLY=__VIEWONLY__;   // shared board: live data only, no trading UI
 let closeTimes={};
 function fmtC(v){return v>0?('$'+v.toFixed(2)):'—';}
 function fmtVol(v){v=v||0;return v>=1000?(v/1000).toFixed(1)+'k':String(Math.round(v));}
@@ -711,7 +722,19 @@ async function take(ticker,side,price){
     body:JSON.stringify({ticker,side,price,count})});
   load();
 }
-document.getElementById('clear').onclick=async()=>{if(confirm('Clear all tracked trades?')){await fetch('/api/clear',{method:'POST'});load();}};
+if(VIEW_ONLY){
+  // Shared board — strip the trading surface so viewers can't collide on one
+  // portfolio. Live market data, suggestions and countdowns stay.
+  document.body.classList.add('viewonly');
+  const hide=el=>{if(el)el.style.display='none';};
+  hide(document.getElementById('pnlbar'));
+  hide(document.getElementById('clear'));
+  hide(document.getElementById('opentrades'));
+  document.querySelectorAll('.tradecol').forEach(el=>el.style.display='none');
+  document.querySelectorAll('.mytrades').forEach(el=>el.style.display='none');
+}else{
+  document.getElementById('clear').onclick=async()=>{if(confirm('Clear all tracked trades?')){await fetch('/api/clear',{method:'POST'});load();}};
+}
 document.querySelectorAll('#filter button').forEach(btn=>btn.onclick=()=>{
   CAD=btn.dataset.cad;
   document.querySelectorAll('#filter button').forEach(b=>b.classList.toggle('on',b===btn));
@@ -749,19 +772,20 @@ async function load(){
       ? '<span class="chip flat" title="'+why+'">HOLD</span>'
       : '<span class="chip '+rc.side+'" title="'+why+'">'+rc.action+' <b>'+rc.conf+'%</b></span>';
     const edge=r.edge>0?('<span class="edge pos">'+pct(r.edge)+'</span>'):'<span class="mut">—</span>';
-    const btn=held.has(r.ticker)?'<button class="take held" disabled>✓ holding</button>'
-      :'<button class="take" onclick="take(\''+r.ticker+'\',\''+r.lean_side+'\','+r.lean_ask+')">Take '+r.lean_side.toUpperCase()+' $'+r.lean_ask.toFixed(2)+'</button>';
+    const btn=VIEW_ONLY?''
+      :(held.has(r.ticker)?'<button class="take held" disabled>✓ holding</button>'
+      :'<button class="take" onclick="take(\''+r.ticker+'\',\''+r.lean_side+'\','+r.lean_ask+')">Take '+r.lean_side.toUpperCase()+' $'+r.lean_ask.toFixed(2)+'</button>');
     return '<tr data-t="'+r.ticker+'" class="'+(rc.side?'sig '+rc.side:'')+'">'
       +'<td class="l">'+r.title+'</td><td><span class="coin">'+r.coin+'</span></td>'
       +'<td class="book"><span>'+fmtC(r.yes_bid)+'</span> / '+fmtC(r.yes_ask)+'</td>'
       +'<td class="book"><span>'+fmtC(r.no_bid)+'</span> / '+fmtC(r.no_ask)+'</td>'
       +'<td>'+fmtC(r.last)+'</td><td class="mut">'+fmtVol(r.volume)+'</td>'
       +'<td class="cdcell">'+countdown(closeTimes[r.ticker])+'</td><td>'+edge+'</td>'
-      +'<td>'+rec+'</td><td class="l">'+btn+'</td></tr>';
+      +'<td>'+rec+'</td><td class="l tradecol">'+btn+'</td></tr>';
   }).join(''):'<tr><td class="l mut" colspan="10">No open up/down crypto markets right now.</td></tr>';
 
   // ledger
-  if(L){
+  if(L && !VIEW_ONLY){
     document.getElementById('pnlbar').style.display=(L.open.length||L.closed.length)?'flex':'none';
     const set=(id,v)=>{const e=document.getElementById(id);e.textContent=signed(v);e.className=(id==='p-net'?'num ':'v ')+(v>=0?'up':'down');};
     set('p-net',L.net);set('p-real',L.realized);set('p-unreal',L.unreal);

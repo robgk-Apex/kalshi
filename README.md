@@ -45,6 +45,7 @@ detected signals:
 
 ```bash
 python scripts/dashboard.py --live                         # REAL Kalshi data, no keys
+python scripts/dashboard.py --live --public                # view-only board, safe to share
 python scripts/dashboard.py --config config/config.yaml    # authenticated (adds balance)
 python scripts/dashboard.py --demo                         # synthetic preview, no network
 ```
@@ -52,6 +53,14 @@ python scripts/dashboard.py --demo                         # synthetic preview, 
 `--live` reads Kalshi's **public** market data — no account or keys needed — so
 it's the quickest way to see real up/down crypto markets. Add keys only for the
 account-balance tile.
+
+**Sharing the live board.** Add `--public` to serve a **view-only** board:
+everyone with the URL sees the same live-updating market data, suggestions and
+countdowns, but the Take/Clear buttons and P&L panel are hidden and the write
+endpoints refuse POSTs. This matters because the paper-trading ledger is a
+single server-side portfolio — without `--public`, every viewer would see and
+edit *the same* positions. Deployed instances (Docker/Render/Fly) default to
+`--public` for this reason; drop the flag only for a private/solo instance.
 
 Then open <http://localhost:8787>. Live mode needs your API keys and a network
 that can reach Kalshi; use `--demo` anywhere else to preview the screen.
