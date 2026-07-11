@@ -52,10 +52,10 @@ def build_rec(prices, strike, yes_ask, no_ask, hours):
         r = recommend(indicators_from_series(prices, strike),
                       yes_ask, no_ask, hours)
         return {"action": r.action, "side": r.side, "conf": r.confidence,
-                "reasons": r.reasons}
+                "reasons": r.reasons, "prob": r.probability}
     except Exception:
-        return {"action": "TOSS-UP", "side": "", "conf": 0,
-                "reasons": ["no price data yet"]}
+        return {"action": "NO DATA", "side": "", "conf": 0,
+                "reasons": ["not enough price history yet"], "prob": 0.5}
 
 
 def apply_rec(row, prices, strike):
@@ -767,7 +767,7 @@ PAGE = r"""<!doctype html>
     Contracts settle at $1 (win) or $0 (loss). Entry uses the side's <b>ask</b>; unrealized P&amp;L =
     contracts × (mid − entry). Your positions and P&amp;L live in <b>this browser only</b> — each
     viewer has their own. Educational only; hourly/15-min crypto is close to a coin flip.
-    <span style="opacity:.55">· board build: <b>predict-3</b></span>
+    <span style="opacity:.55">· board build: <b>model-4</b></span>
   </p>
 </div>
 <script>
@@ -803,7 +803,7 @@ function marketSub(r){
   return "spot "+fmtStrike(r.coin,r.spot)+(s>0?' <span class="'+(itm?"pos":"neg")+'">'+(itm?"(YES in the money)":"(NO in the money)")+"</span>":"");}
 function bookMid(book,side){return side==="yes"?(book.yes_bid+book.yes_ask)/2:(book.no_bid+book.no_ask)/2;}
 function curBook(tk){return rowsById[tk]||lastBook[tk]||null;}
-function recClass(a){return a==="YES"?"buyyes":a==="NO"?"buyno":"hold";}
+function recClass(a){return a==="NO DATA"?"hold":/YES/.test(a)?"buyyes":/NO/.test(a)?"buyno":"hold";}
 
 // ---- settlement: a held market that has left the live feed AND is past close
 //      resolves at the market-implied outcome (last yes-mid >= 0.50 -> YES wins).
@@ -868,7 +868,7 @@ function renderTable(live){
   const tb=document.getElementById("rows");
   if(!vis.length){tb.innerHTML='<tr><td class="l" colspan="8" style="color:var(--faint);padding:18px">No open '+(filter==="all"?"":filter+" ")+'markets right now.</td></tr>';return;}
   tb.innerHTML=vis.map(function(r){
-    const rc=r.rec||{action:"TOSS-UP",side:"",conf:0,reasons:[]};
+    const rc=r.rec||{action:"NO DATA",side:"",conf:0,reasons:[]};
     const cls=recClass(rc.action), conf=Math.max(0,Math.min(100,rc.conf||0));
     const why1=(rc.reasons&&rc.reasons[0])||"", whyRest=(rc.reasons||[]).slice(1,3).join(" · ");
     const wtag=is15(r.ticker)?'':'';

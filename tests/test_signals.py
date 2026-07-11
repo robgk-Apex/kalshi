@@ -80,14 +80,17 @@ class TestRecommend(unittest.TestCase):
         self.assertEqual(r.action, "YES")
         self.assertFalse(any("too rich" in s for s in r.reasons))
 
-    def test_flat_market_is_tossup(self):
+    def test_flat_market_still_leans(self):
+        # A near-coin-flip with data still commits to a side (never a toss-up).
         flat = [100 + (0.05 if i % 2 else -0.05) for i in range(30)]
         r = recommend(indicators_from_series(flat, 100), 0.5, 0.5, 1.0)
-        self.assertEqual(r.action, "TOSS-UP")
+        self.assertIn(r.action, ("YES", "NO", "LEAN YES", "LEAN NO"))
+        self.assertIn(r.side, ("yes", "no"))
 
-    def test_no_data_is_tossup(self):
+    def test_only_missing_data_is_non_directional(self):
         r = recommend(None, 0.5, 0.5, 1.0)
-        self.assertEqual(r.action, "TOSS-UP")
+        self.assertEqual(r.action, "NO DATA")
+        self.assertEqual(r.side, "")
         self.assertEqual(r.confidence, 0)
 
     def test_price_does_not_change_the_call(self):
@@ -98,14 +101,24 @@ class TestRecommend(unittest.TestCase):
         self.assertEqual(cheap.action, rich.action)
         self.assertEqual(cheap.score, rich.score)
 
-    def test_threshold_gates_tossup(self):
-        # A weak lean (just under the decision threshold) stays TOSS-UP.
+    def test_weak_conviction_is_labelled_lean(self):
+        # Below the decision threshold we still pick a side, just label it LEAN.
         ind = indicators_from_series(rising(), 103)
         r = recommend(ind, 0.5, 0.5, 1.0)
-        if abs(r.score) < DECISION_THRESHOLD:
-            self.assertEqual(r.action, "TOSS-UP")
+        if r.confidence < DECISION_THRESHOLD:
+            self.assertTrue(r.action.startswith("LEAN"))
         else:
             self.assertIn(r.action, ("YES", "NO"))
+        self.assertIn(r.side, ("yes", "no"))
+
+    def test_probability_matches_side(self):
+        # Probability and side are consistent, and it always commits with data.
+        up = recommend(indicators_from_series(rising(), 103))
+        self.assertGreaterEqual(up.probability, 0.5)
+        self.assertEqual(up.side, "yes")
+        down = recommend(indicators_from_series(falling(), 105))
+        self.assertLess(down.probability, 0.5)
+        self.assertEqual(down.side, "no")
 
 
 if __name__ == "__main__":

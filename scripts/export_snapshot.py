@@ -131,7 +131,7 @@ def main():
             rec = {"action": rec.action, "side": rec.side, "conf": rec.confidence,
                    "reasons": rec.reasons}
         except Exception:
-            rec = {"action": "TOSS-UP", "side": "", "conf": 0, "reasons": ["no price data yet"]}
+            rec = {"action": "NO DATA", "side": "", "conf": 0, "reasons": ["not enough price history yet"]}
         bucket = 15 if hrs <= 0.3 else (30 if hrs <= 0.6 else 60)
         rows.append({
             "ticker": m["ticker"], "coin": coin,
