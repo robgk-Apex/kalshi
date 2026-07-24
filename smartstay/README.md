@@ -15,7 +15,8 @@ polished, responsive single-page frontend (no build step required).
 
 ### For guests
 - **Smart search** by destination, dates, guests, home type, price, amenities, and Instant Book
-- **Rich listing pages** — photo gallery + lightbox, amenities, host profile, map, and reviews
+- **Rich listing pages** — photo gallery + lightbox, amenities, host profile, an interactive map, and reviews
+- **Interactive maps** (Leaflet + OpenStreetMap) — a split list/map view on search with price pins, popups, and card↔pin hover highlighting, plus an approximate-location map on every listing
 - **Real availability** — booked dates are blocked; overlapping stays are rejected
 - **Dynamic pricing quotes** — nightly + weekend rates, automatic **weekly / monthly discounts**,
   cleaning fee, service fee, and taxes, all itemized before you book
@@ -128,4 +129,5 @@ Everything is itemized in the booking widget so guests always see exactly what t
 
 - Payments are simulated (no real charges) — this is a complete, runnable demo marketplace.
 - Photos load from Unsplash and avatars from DiceBear; both fail gracefully if offline.
+- Maps use a locally-vendored Leaflet (`public/vendor/leaflet/`) with CARTO/OpenStreetMap tiles — no CDN or API key required.
 - Data persists to a local JSON file — swap `store.js` for Postgres/Mongo to go to production.

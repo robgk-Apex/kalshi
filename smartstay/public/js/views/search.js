@@ -67,6 +67,16 @@ export async function searchView() {
 
   const activeFilterCount = ['minPrice', 'maxPrice', 'instantBook'].filter((k) => query[k]).length + (query.amenities ? query.amenities.split(',').filter(Boolean).length : 0);
 
+  const split = h('div', { class: 'search-split' },
+    h('div', { class: 'search-grid-col' }, h('div', { id: 'search-grid' }, cardGridSkeleton(6))),
+    h('div', { class: 'search-map-col' }, h('div', { id: 'search-map', class: 'leaflet-map search' })));
+
+  const toggleBtn = h('button', { class: 'btn btn-primary viewtoggle', onClick: () => {
+    const mapOn = split.classList.toggle('map-only');
+    toggleBtn.textContent = mapOn ? '☰ Show list' : '🗺️ Show map';
+    if (mapOn) requestAnimationFrame(() => searchMap && searchMap.invalidateSize());
+  } }, '🗺️ Show map');
+
   mount(app,
     h('div', { class: 'container', style: { paddingTop: '18px' } },
       searchWidget(query, (q) => navigate('/search?' + q.toString())),
@@ -77,8 +87,9 @@ export async function searchView() {
           h('button', { class: 'pill', onClick: () => filterModal(query) }, '⚙️ Filters', activeFilterCount ? h('span', { class: 'chip', style: { padding: '1px 8px' } }, String(activeFilterCount)) : null),
           sortSel,
         )),
-      h('div', { id: 'search-grid' }, cardGridSkeleton(8)),
-    ));
+      split,
+    ),
+    toggleBtn);
 
   try {
     const usp = new URLSearchParams();
@@ -91,6 +102,7 @@ export async function searchView() {
     ].join(' ');
     mount($('#result-count'), h('strong', {}, label));
     if (!listings.length) {
+      split.classList.add('list-only');
       mount($('#search-grid'), h('div', { class: 'empty' },
         h('div', { class: 'big' }, '🔍'),
         h('h3', {}, 'No homes match your search'),
@@ -98,8 +110,53 @@ export async function searchView() {
         h('button', { class: 'btn btn-outline', onClick: () => navigate('/search') }, 'Clear filters')));
     } else {
       mount($('#search-grid'), h('div', { class: 'grid' }, ...listings.map(listingCard)));
+      requestAnimationFrame(() => initSearchMap(listings));
     }
   } catch (err) {
+    split.classList.add('list-only');
     mount($('#search-grid'), h('p', { class: 'muted' }, 'Could not load results: ' + err.message));
   }
+}
+
+let searchMap = null;
+function initSearchMap(listings) {
+  const el = document.getElementById('search-map');
+  if (!el || !window.L) return;
+  const pts = listings.filter((l) => l.lat && l.lng);
+  if (!pts.length) return;
+  try {
+    if (searchMap) { searchMap.remove(); searchMap = null; }
+    searchMap = L.map(el, { scrollWheelZoom: false });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap © CARTO', maxZoom: 19, subdomains: 'abcd',
+    }).addTo(searchMap);
+
+    const markers = {};
+    pts.forEach((l) => {
+      const m = L.marker([l.lat, l.lng], {
+        icon: L.divIcon({ className: '', html: `<div class="price-pin">$${l.fromNightly.toLocaleString()}</div>`, iconSize: null }),
+      }).addTo(searchMap);
+      m.bindPopup(
+        `<a class="map-pop" href="#/listing/${l.id}">
+           <img src="${l.photo}" alt="">
+           <div class="p"><b>${l.city}, ${l.state}</b><span class="s">${l.title}</span>
+           <span class="s">★ ${l.rating ? l.rating.toFixed(2) : 'New'} · $${l.fromNightly.toLocaleString()}/night</span></div>
+         </a>`, { closeButton: true });
+      markers[l.id] = m;
+    });
+
+    const group = L.featureGroup(Object.values(markers));
+    searchMap.fitBounds(group.getBounds().pad(0.25));
+    if (searchMap.getZoom() > 11) searchMap.setZoom(11);
+    searchMap.on('click', () => searchMap.scrollWheelZoom.enable());
+
+    // Hover a card → highlight its pin.
+    document.querySelectorAll('#search-grid .card').forEach((card, i) => {
+      const l = pts[i];
+      if (!l || !markers[l.id]) return;
+      const pinEl = () => markers[l.id].getElement()?.querySelector('.price-pin');
+      card.addEventListener('mouseenter', () => pinEl()?.classList.add('active'));
+      card.addEventListener('mouseleave', () => pinEl()?.classList.remove('active'));
+    });
+  } catch (err) { /* map is enhancement-only */ }
 }

@@ -175,13 +175,32 @@ export async function listingView({ params }) {
         h('div', {}, bookingWidget(l)),
       )),
   );
+
+  // Initialize the Leaflet map after the container is in the DOM.
+  requestAnimationFrame(() => initListingMap(l));
 }
 
 function mapBlock(l) {
   return h('div', { class: 'detail-sec' },
     h('h3', {}, 'Where you’ll be'),
-    h('p', { class: 'muted', style: { marginTop: '-4px' } }, `${l.city}, ${l.state}`),
-    h('div', { class: 'map-box', style: { backgroundImage: 'linear-gradient(120deg,#dbe7f0,#eef3f7)' } },
-      h('div', { style: { position: 'absolute', inset: 0, opacity: .5, backgroundImage: 'url(https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1200&q=60)', backgroundSize: 'cover', backgroundPosition: 'center' } }),
-      h('div', { class: 'map-pin' }, `📍 ${l.city}`)));
+    h('p', { class: 'muted', style: { marginTop: '-4px' } }, `${l.city}, ${l.state} · exact location shared after booking`),
+    h('div', { id: 'detail-map', class: 'leaflet-map',
+      style: { backgroundImage: 'linear-gradient(120deg,#dbe7f0,#eef3f7)' } }));
+}
+
+function initListingMap(l) {
+  const el = document.getElementById('detail-map');
+  if (!el || !window.L || !l.lat || !l.lng) return;
+  try {
+    const map = L.map(el, { scrollWheelZoom: false, zoomControl: true }).setView([l.lat, l.lng], 13);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap © CARTO', maxZoom: 19, subdomains: 'abcd',
+    }).addTo(map);
+    // Approximate area (privacy) + a price marker.
+    L.circle([l.lat, l.lng], { radius: 700, color: '#ff385c', weight: 1.5, fillColor: '#ff385c', fillOpacity: 0.12 }).addTo(map);
+    L.marker([l.lat, l.lng], {
+      icon: L.divIcon({ className: '', html: `<div class="price-pin active">$${l.fromNightly.toLocaleString()}</div>`, iconSize: null }),
+    }).addTo(map);
+    map.on('click', () => map.scrollWheelZoom.enable());
+  } catch (err) { /* map is enhancement-only */ }
 }
