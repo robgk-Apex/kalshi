@@ -59,7 +59,7 @@ export function renderFooter() {
         col('Explore', [['Beach houses', '#/search?amenities=Beach access'], ['Cabins', '#/search?type=Cabin'], ['Luxury villas', '#/search?type=Villa'], ['Pet-friendly', '#/search?amenities=Pets allowed']]),
         col('Hosting', [['List your home', '#/host/new'], ['Host dashboard', '#/host'], ['Responsible hosting', '#/host']]),
         col('Support', [['Help center'], ['Cancellation options'], ['Safety information']]),
-        col('Company', [['About SmartStay'], ['Newsroom'], ['Careers']]),
+        col('Company', [['About SmartStay', '#/about'], ['Newsroom'], ['Careers']]),
       ),
       h('div', { class: 'footbar spread wrap' },
         h('span', {}, `© ${new Date().getFullYear()} SmartStay USA · Built as a demo marketplace`),
