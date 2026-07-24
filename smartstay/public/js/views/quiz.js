@@ -1,4 +1,4 @@
-import { h, mount, $, loading } from '../ui.js';
+import { h, mount, $, loading, fmtDate, addDaysISO, todayISO } from '../ui.js';
 import { api } from '../api.js';
 import { navigate } from '../router.js';
 import { listingCard } from '../components.js';
@@ -57,7 +57,32 @@ const QUESTIONS = [
       { label: 'No dealbreakers', ico: '✨' },
     ],
   },
+  { key: 'when', q: 'When are you going?', dynamic: 'months' },
 ];
+
+// Upcoming months + a flexible option (built fresh so it's always current).
+function monthOptions() {
+  const out = [];
+  const now = new Date();
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    out.push({ label: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), ico: '📅', year: d.getFullYear(), month: d.getMonth() + 1 });
+  }
+  out.push({ label: 'I’m flexible', ico: '🤷', flexible: true });
+  return out;
+}
+
+// Turn the month + trip length into a concrete stay window we can check availability for.
+function computeDates(a) {
+  const w = a.when;
+  if (!w || w.flexible) return null;
+  const nights = Math.min(a.length?.nights || 3, 27);
+  const now = new Date();
+  const ci = (w.year === now.getFullYear() && w.month === now.getMonth() + 1)
+    ? addDaysISO(todayISO(), 7)                                   // this month → a week out
+    : `${w.year}-${String(w.month).padStart(2, '0')}-08`;         // future month → the 8th
+  return { ci, co: addDaysISO(ci, nights) };
+}
 
 function scoreListing(l, a) {
   let s = 0;
@@ -108,6 +133,8 @@ function toSearchQuery(a) {
   if (a.budget?.max) q.set('maxPrice', a.budget.max);
   if (a.must?.amenity) q.set('amenities', a.must.amenity);
   if (a.must?.instantBook) q.set('instantBook', 'true');
+  const dates = computeDates(a);
+  if (dates) { q.set('checkIn', dates.ci); q.set('checkOut', dates.co); }
   return q.toString();
 }
 
@@ -132,14 +159,23 @@ export function openQuiz() {
       children));
   }
 
+  function isSelected(Q, opt) {
+    if (answers[Q.key] === opt) return true;
+    if (Q.key === 'when' && answers.when) {
+      return (opt.flexible && answers.when.flexible) || (answers.when.year === opt.year && answers.when.month === opt.month);
+    }
+    return false;
+  }
+
   function renderQuestion() {
     const Q = QUESTIONS[step];
+    const opts = Q.dynamic === 'months' ? monthOptions() : Q.options;
     frame(h('div', {},
       h('div', { class: 'muted', style: { fontWeight: 700, fontSize: '13px', letterSpacing: '.05em' } }, `QUESTION ${step + 1} OF ${QUESTIONS.length}`),
       h('h2', { class: 'quiz-q' }, Q.q),
       h('div', { class: 'quiz-opts' },
-        ...Q.options.map((opt) => h('button', {
-          class: 'quiz-opt' + (answers[Q.key] === opt ? ' on' : ''),
+        ...opts.map((opt) => h('button', {
+          class: 'quiz-opt' + (isSelected(Q, opt) ? ' on' : ''),
           onClick: () => { answers[Q.key] = opt; step < QUESTIONS.length - 1 ? (step++, renderQuestion()) : finish(); },
         }, h('span', { class: 'ico' }, opt.ico), h('span', {}, opt.label, opt.sub ? h('small', {}, opt.sub) : null))),
       ),
@@ -151,17 +187,20 @@ export function openQuiz() {
   async function finish() {
     frame(h('div', { class: 'center', style: { paddingTop: '40px' } },
       h('h2', { class: 'quiz-q' }, 'Finding your perfect stays…'), loading()));
+    const dates = computeDates(answers);
+    // When dates are chosen, the server filters out anything already booked/blocked.
+    const q = dates ? `?checkIn=${dates.ci}&checkOut=${dates.co}` : '';
     let listings = [];
-    try { ({ listings } = await api.listings()); } catch { /* ignore */ }
+    try { ({ listings } = await api.listings(q)); } catch { /* ignore */ }
     const ranked = listings
       .map((l) => ({ l, s: scoreListing(l, answers) }))
       .sort((a, b) => b.s - a.s)
       .slice(0, 6)
       .map((x) => x.l);
-    renderResults(ranked);
+    renderResults(ranked, dates);
   }
 
-  function renderResults(matches) {
+  function renderResults(matches, dates) {
     const grid = h('div', { class: 'grid', style: { marginTop: '22px' } }, ...matches.map((l) => {
       const card = listingCard(l);
       card.addEventListener('click', close); // navigate + dismiss the quiz
@@ -173,8 +212,14 @@ export function openQuiz() {
       h('div', { class: 'center' },
         h('div', { style: { fontSize: '44px' } }, '✨'),
         h('h2', { class: 'quiz-q' }, 'Your perfect matches'),
-        h('p', { class: 'muted' }, 'Hand-picked from your answers — and every one is booking-fee free.')),
-      matches.length ? grid : h('p', { class: 'muted center' }, 'Browse all our homes to find your fit.'),
+        h('p', { class: 'muted' }, dates
+          ? `Available ${fmtDate(dates.ci)} – ${fmtDate(dates.co)} · hand-picked from your answers, booking-fee free.`
+          : 'Hand-picked from your answers — and every one is booking-fee free.')),
+      matches.length
+        ? grid
+        : h('p', { class: 'muted center', style: { padding: '20px' } }, dates
+          ? 'No homes are free for those exact dates. Try “I’m flexible” or a different month.'
+          : 'Browse all our homes to find your fit.'),
       h('div', { class: 'row', style: { justifyContent: 'center', marginTop: '26px', flexWrap: 'wrap' } },
         h('button', { class: 'btn btn-primary btn-lg', onClick: () => { close(); navigate('/search?' + toSearchQuery(answers)); } }, 'Browse all matches'),
         h('button', { class: 'btn btn-outline', onClick: () => { step = 0; for (const k in answers) delete answers[k]; renderQuestion(); } }, '↻ Retake quiz'))));
