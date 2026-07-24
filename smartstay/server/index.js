@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import { load, save, flush, getDb, id } from './store.js';
 import { seedIfEmpty } from './seed.js';
 import { hashPassword, verifyPassword, signToken, publicUser, authenticate } from './auth.js';
-import { quote, fromNightly, isAvailable, blockedRanges, nightsBetween } from './pricing.js';
+import { quote, fromNightly, isAvailable, blockedRanges, nightsBetween, hostEconomics, PLATFORM_COMMISSION } from './pricing.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -219,10 +219,19 @@ app.get('/api/host/listings', authenticate(), wrap((req, res) => {
   const mine = db().listings.filter((l) => l.hostId === req.user.id);
   const cards = mine.map((l) => {
     const bookings = db().bookings.filter((b) => b.listingId === l.id && b.status !== 'cancelled');
-    const revenue = bookings.reduce((s, b) => s + (b.total || 0), 0);
-    return { ...listingCard(l), bookingCount: bookings.length, revenue: Math.round(revenue), description: l.description, pricing: l.pricing, minNights: l.minNights, blockedDates: l.blockedDates };
+    const econ = bookings.reduce((acc, b) => {
+      const e = hostEconomics(b);
+      acc.gross += e.gross; acc.platformFee += e.platformFee; acc.payout += e.payout;
+      return acc;
+    }, { gross: 0, platformFee: 0, payout: 0 });
+    return {
+      ...listingCard(l), bookingCount: bookings.length,
+      gross: Math.round(econ.gross), platformFee: Math.round(econ.platformFee), payout: Math.round(econ.payout),
+      revenue: Math.round(econ.payout), // net payout to the host
+      description: l.description, pricing: l.pricing, minNights: l.minNights, blockedDates: l.blockedDates,
+    };
   });
-  res.json({ listings: cards });
+  res.json({ listings: cards, commissionPct: PLATFORM_COMMISSION * 100 });
 }));
 
 app.post('/api/host/listings', authenticate(), wrap((req, res) => {
@@ -231,7 +240,7 @@ app.post('/api/host/listings', authenticate(), wrap((req, res) => {
     return res.status(400).json({ error: 'Title, city and description are required.' });
   }
   if (!clean.photos.length) {
-    clean.photos = ['https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=1200&q=80'];
+    return res.status(400).json({ error: 'Please add at least one photo of your place.' });
   }
   req.user.isHost = true;
   const listing = { id: id(), hostId: req.user.id, blockedDates: [], createdAt: new Date().toISOString(), ...clean };
@@ -244,7 +253,9 @@ app.put('/api/host/listings/:lid', authenticate(), wrap((req, res) => {
   const l = db().listings.find((x) => x.id === req.params.lid);
   if (!l) return res.status(404).json({ error: 'Listing not found.' });
   if (l.hostId !== req.user.id) return res.status(403).json({ error: 'You can only edit your own listings.' });
-  Object.assign(l, sanitizeListingInput({ ...l, ...req.body }));
+  const clean = sanitizeListingInput({ ...l, ...req.body });
+  if (!clean.photos.length) return res.status(400).json({ error: 'Please add at least one photo of your place.' });
+  Object.assign(l, clean);
   save();
   res.json({ listing: l });
 }));
@@ -277,6 +288,7 @@ app.get('/api/host/bookings', authenticate(), wrap((req, res) => {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .map((b) => ({
       ...b,
+      ...hostEconomics(b),
       listing: listingCard(db().listings.find((l) => l.id === b.listingId)),
       guest: hostCard(b.guestId),
     }));

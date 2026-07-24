@@ -4,6 +4,16 @@
 
 const SERVICE_FEE_PCT = 0.12; // guest service fee
 const TAX_PCT = 0.08;         // occupancy / lodging tax estimate
+export const PLATFORM_COMMISSION = 0.20; // SmartStay's cut of host gross revenue
+
+// Host economics for a completed/active booking: gross (accommodation +
+// cleaning), SmartStay's 20% commission, and the host's net payout (80%).
+export function hostEconomics(booking) {
+  const gross = round2((booking.subtotal || 0) + (booking.cleaningFee || 0));
+  const platformFee = round2(gross * PLATFORM_COMMISSION);
+  const payout = round2(gross - platformFee);
+  return { gross, platformFee, payout };
+}
 
 export function toUTCDate(str) {
   // Accepts 'YYYY-MM-DD' and returns a UTC midnight Date.

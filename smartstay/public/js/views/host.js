@@ -24,7 +24,9 @@ export async function hostView() {
   try { ({ listings } = await api.hostListings()); ({ bookings } = await api.hostBookings()); }
   catch (err) { mount(app, h('div', { class: 'container' }, h('p', { class: 'muted' }, err.message))); return; }
 
-  const revenue = listings.reduce((s, l) => s + (l.revenue || 0), 0);
+  const grossTotal = listings.reduce((s, l) => s + (l.gross || 0), 0);
+  const feeTotal = listings.reduce((s, l) => s + (l.platformFee || 0), 0);
+  const payoutTotal = listings.reduce((s, l) => s + (l.payout || 0), 0);
   const totalBookings = bookings.filter((b) => b.status !== 'cancelled').length;
   const pending = bookings.filter((b) => b.status === 'pending');
   const reload = () => hostView();
@@ -37,9 +39,13 @@ export async function hostView() {
     h('div', { class: 'stat-row' },
       h('div', { class: 'stat' }, h('div', { class: 'n' }, String(listings.length)), h('div', { class: 'l' }, 'Active listings')),
       h('div', { class: 'stat' }, h('div', { class: 'n' }, String(totalBookings)), h('div', { class: 'l' }, 'Total bookings')),
-      h('div', { class: 'stat' }, h('div', { class: 'n' }, usd(revenue)), h('div', { class: 'l' }, 'Gross earnings')),
+      h('div', { class: 'stat' }, h('div', { class: 'n', style: { color: 'var(--green)' } }, usd(payoutTotal)), h('div', { class: 'l' }, 'Your payout (80%)')),
       h('div', { class: 'stat' }, h('div', { class: 'n' }, String(pending.length)), h('div', { class: 'l' }, 'Pending requests')),
     ),
+
+    h('div', { class: 'demo-note', style: { marginBottom: '24px', display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' } },
+      h('span', {}, `💸 SmartStay keeps 20% of gross booking revenue — you keep 80%.`),
+      h('span', { style: { fontWeight: 600 } }, `Gross ${usd(grossTotal)} · SmartStay fee ${usd(feeTotal)} · Your payout ${usd(payoutTotal)}`)),
 
     pending.length ? h('div', {},
       h('h3', {}, '⏳ Requests needing your review'),
@@ -61,7 +67,7 @@ function listingRow(l, reload) {
     h('div', { class: 'grow' },
       h('strong', {}, l.title),
       h('div', { class: 'muted' }, `${l.city}, ${l.state} · ${usd(l.fromNightly)}/night`),
-      h('div', { class: 'muted', style: { fontSize: '13.5px' } }, `${l.bookingCount} bookings · ${usd(l.revenue)} earned · ${l.rating ? '★ ' + l.rating.toFixed(1) : 'No reviews'}`)),
+      h('div', { class: 'muted', style: { fontSize: '13.5px' } }, `${l.bookingCount} bookings · ${usd(l.payout || 0)} payout · ${l.rating ? '★ ' + l.rating.toFixed(1) : 'No reviews'}`)),
     h('div', { class: 'row' },
       h('button', { class: 'btn btn-outline', onClick: () => navigate(`/host/edit/${l.id}`) }, 'Edit'),
       h('button', { class: 'btn btn-ghost', onClick: async () => {
@@ -76,7 +82,7 @@ function bookingRow(b, reload, actionable) {
     h('div', { class: 'grow' },
       h('div', { class: 'spread' }, h('strong', {}, b.listing?.title || 'Listing'), h('span', { class: `badge status-${b.status}` }, b.status)),
       h('div', { class: 'muted' }, `${b.guest?.name || 'Guest'} · ${b.guests} guests · ${fmtRange(b.checkIn, b.checkOut)}`),
-      h('div', {}, h('strong', {}, usd(b.total)))),
+      h('div', {}, h('strong', { style: { color: 'var(--green)' } }, usd(b.payout || 0)), h('span', { class: 'muted' }, ` payout · ${usd(b.total)} gross`))),
     actionable && b.status === 'pending' ? h('div', { class: 'row' },
       h('button', { class: 'btn btn-primary', onClick: async () => { try { await api.post(`/bookings/${b.id}/confirm`); toast('Booking confirmed', 'ok'); reload(); } catch (e) { toast(e.message, 'err'); } } }, 'Confirm'),
       h('button', { class: 'btn btn-ghost', onClick: async () => { try { await api.post(`/bookings/${b.id}/cancel`); toast('Declined', 'ok'); reload(); } catch (e) { toast(e.message, 'err'); } } }, 'Decline')) : null);
@@ -156,12 +162,23 @@ export async function hostEditView({ params }) {
       minNights: +f.minNights.value, instantBook: f.instantBook.checked,
     };
     if (!payload.title || !payload.city || !payload.description) { toast('Title, city and description are required', 'err'); return; }
+    if (!payload.photos.length) { toast('Add at least one photo of your place', 'err'); return; }
     try {
       if (editing) { await api.put(`/host/listings/${params.id}`, payload); toast('Listing updated', 'ok'); }
       else { const { listing } = await api.post('/host/listings', payload); auth.update({ ...auth.user, isHost: true }); toast('Your home is live! 🎉', 'ok'); navigate(`/listing/${listing.id}`); return; }
       navigate('/host');
     } catch (e) { toast(e.message, 'err'); }
   };
+
+  const netHint = h('div', { class: 'demo-note', style: { marginTop: '10px' } });
+  const updateNet = () => {
+    const nightly = +f.nightly.value || 0;
+    const weekend = +f.weekendNightly.value || nightly;
+    mount(netHint, `💸 SmartStay keeps 20% of gross booking revenue — you keep 80%. That's about ${usd(Math.round(nightly * 0.8))}/night${weekend !== nightly ? ` (${usd(Math.round(weekend * 0.8))}/weekend night)` : ''} in your pocket, plus your cleaning fee.`);
+  };
+  f.nightly.addEventListener('input', updateNet);
+  f.weekendNightly.addEventListener('input', updateNet);
+  updateNet();
 
   mount(app, h('div', { class: 'container', style: { maxWidth: '820px', paddingTop: '30px', paddingBottom: '50px' } },
     h('div', { class: 'breadcrumb' }, h('a', { href: '#/host' }, 'Hosting'), ' / ', editing ? 'Edit listing' : 'New listing'),
@@ -177,7 +194,7 @@ export async function hostEditView({ params }) {
         h('div', { class: 'grow' }, fg('Bedrooms', f.bedrooms)), h('div', { class: 'grow' }, fg('Beds', f.beds)),
         h('div', { class: 'grow' }, fg('Bathrooms', f.bathrooms)), h('div', { class: 'grow' }, fg('Max guests', f.maxGuests))),
 
-      h('h3', { style: { marginTop: '16px' } }, '② Photos', h('span', { class: 'muted', style: { fontWeight: 400, fontSize: '15px' } }, ' — pick a few')),
+      h('h3', { style: { marginTop: '16px' } }, '② Photos', h('span', { style: { color: 'var(--brand)', fontWeight: 700, fontSize: '15px' } }, ' *required'), h('span', { class: 'muted', style: { fontWeight: 400, fontSize: '15px' } }, ' — every home needs at least one photo')),
       photoGrid,
 
       h('h3', { style: { marginTop: '16px' } }, '③ Amenities'),
@@ -191,6 +208,7 @@ export async function hostEditView({ params }) {
         h('div', { class: 'grow' }, fg('Weekly discount (%)', f.weeklyDiscountPct, '7+ nights')),
         h('div', { class: 'grow' }, fg('Monthly discount (%)', f.monthlyDiscountPct, '28+ nights')),
         h('div', { class: 'grow' }, fg('Cleaning fee ($)', f.cleaningFee))),
+      netHint,
       h('div', { class: 'row wrap', style: { gap: '14px', alignItems: 'end' } },
         h('div', { style: { width: '160px' } }, fg('Minimum nights', f.minNights)),
         h('label', { class: 'check', style: { marginBottom: '2px' } }, f.instantBook, '⚡ Enable Instant Book')),
