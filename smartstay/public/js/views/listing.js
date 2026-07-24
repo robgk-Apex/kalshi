@@ -3,6 +3,11 @@ import { api, auth } from '../api.js';
 import { navigate } from '../router.js';
 import { favState } from '../components.js';
 
+function goBack() {
+  if (window.history.length > 1) window.history.back();
+  else navigate('/search');
+}
+
 function gallery(photos) {
   const safe = photos.length ? photos : ['https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=1200&q=80'];
   const pics = [...safe, ...safe, ...safe].slice(0, 5);
@@ -144,6 +149,9 @@ export async function listingView({ params }) {
 
   mount(app,
     h('div', { class: 'container detail-head' },
+      h('div', { class: 'spread wrap', style: { paddingTop: '14px' } },
+        h('button', { class: 'btn btn-outline', onClick: goBack }, '← Back'),
+        h('a', { class: 'btn btn-ghost', href: '#/' }, '🏡 Home')),
       h('div', { class: 'breadcrumb' }, h('a', { href: '#/search' }, 'Homes'), ' / ', h('a', { href: `#/search?city=${encodeURIComponent(l.state)}` }, `${l.city}, ${l.state}`), ' / ', l.type),
       h('div', { class: 'spread wrap' },
         h('h1', { class: 'detail-title' }, l.title),
