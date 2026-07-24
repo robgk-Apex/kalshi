@@ -237,6 +237,7 @@ section.block { padding: 44px 0; }
 .quiz-hero-btn { display: inline-block; margin-top: 20px; background: rgba(255,255,255,.16); color: #fff; border: 1.5px solid rgba(255,255,255,.55); backdrop-filter: blur(6px); border-radius: 999px; padding: 12px 22px; font-weight: 700; font-size: 15px; transition: background .15s, transform .08s; }
 .quiz-hero-btn:hover { background: rgba(255,255,255,.28); }
 .quiz-hero-btn:active { transform: scale(.97); }
+.quiz-why { margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--green); line-height: 1.45; }
 
 /* Reviews */
 .review-summary { display:flex; align-items:center; gap:14px; font-size:22px; font-weight:700; }

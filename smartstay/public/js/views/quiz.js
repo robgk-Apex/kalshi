@@ -32,9 +32,9 @@ const QUESTIONS = [
   {
     key: 'length', q: 'How long will you stay?',
     options: [
-      { label: 'A weekend', ico: '🗓️', sub: '2–3 nights' },
-      { label: 'A week', ico: '📅', sub: 'weekly discounts kick in' },
-      { label: 'A month or more', ico: '🧳', sub: 'biggest long-stay savings' },
+      { label: 'A weekend', ico: '🗓️', sub: '2–3 nights', nights: 2 },
+      { label: 'A week', ico: '📅', sub: 'weekly discounts kick in', nights: 7 },
+      { label: 'A month or more', ico: '🧳', sub: 'biggest long-stay savings', nights: 30 },
     ],
   },
   {
@@ -74,7 +74,31 @@ function scoreListing(l, a) {
     if (a.must.amenity && l.amenities.includes(a.must.amenity)) s += 3;
     if (a.must.instantBook && l.instantBook) s += 3;
   }
+  // Trip-length fit (proxy for bookability — the quiz doesn't collect exact dates):
+  if (a.length?.nights) {
+    const n = a.length.nights;
+    if ((l.minNights || 1) > n) s -= 2.5;                 // can't book a stay that short
+    if (n >= 28 && l.monthlyDiscountPct) s += 1.5;         // best value for long stays
+    else if (n >= 7 && l.weeklyDiscountPct) s += 1;
+  }
+  if (l.instantBook) s += 0.5;                             // instantly bookable
+  s += (l.rating ? l.rating : 4.0) * 0.4;                 // reward well-reviewed homes (tiebreaker)
   return s;
+}
+
+// Short, human reasons this home matched — shown on each result card.
+function matchReasons(l, a) {
+  const r = [];
+  if (a.vibe?.amenities) { const m = a.vibe.amenities.find((x) => l.amenities.includes(x)); if (m) r.push(m); }
+  else if (a.vibe?.types?.includes(l.type)) r.push(`${l.type} in the heart of the city`);
+  if (a.group?.guests && l.maxGuests >= a.group.guests) r.push(`Sleeps ${l.maxGuests}`);
+  if (a.must?.amenity && l.amenities.includes(a.must.amenity)) r.push(a.must.amenity);
+  if (a.must?.instantBook && l.instantBook) r.push('⚡ Instant Book');
+  if (a.length?.nights >= 28 && l.monthlyDiscountPct) r.push(`${l.monthlyDiscountPct}% off monthly`);
+  else if (a.length?.nights >= 7 && l.weeklyDiscountPct) r.push(`${l.weeklyDiscountPct}% off weekly`);
+  if (l.rating && l.rating >= 4.7) r.push(`★ ${l.rating.toFixed(2)} top-rated`);
+  if (a.budget && l.fromNightly <= (a.budget.max || Infinity)) r.push(`$${l.fromNightly.toLocaleString()}/night`);
+  return r.slice(0, 4);
 }
 
 function toSearchQuery(a) {
@@ -141,7 +165,9 @@ export function openQuiz() {
     const grid = h('div', { class: 'grid', style: { marginTop: '22px' } }, ...matches.map((l) => {
       const card = listingCard(l);
       card.addEventListener('click', close); // navigate + dismiss the quiz
-      return card;
+      const reasons = matchReasons(l, answers);
+      return h('div', { class: 'quiz-match' }, card,
+        reasons.length ? h('div', { class: 'quiz-why' }, '✓ ', reasons.join(' · ')) : null);
     }));
     frame(h('div', {},
       h('div', { class: 'center' },
