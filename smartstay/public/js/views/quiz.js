@@ -72,6 +72,15 @@ function monthOptions() {
   return out;
 }
 
+// Query carried into a listing so its booking widget pre-fills the stay.
+function listingQuery(a) {
+  const q = new URLSearchParams();
+  const dates = computeDates(a);
+  if (dates) { q.set('checkIn', dates.ci); q.set('checkOut', dates.co); }
+  if (a.group?.guests) q.set('guests', a.group.guests);
+  return q.toString();
+}
+
 // Turn the month + trip length into a concrete stay window we can check availability for.
 function computeDates(a) {
   const w = a.when;
@@ -201,9 +210,10 @@ export function openQuiz() {
   }
 
   function renderResults(matches, dates) {
+    const lq = listingQuery(answers);
     const grid = h('div', { class: 'grid', style: { marginTop: '22px' } }, ...matches.map((l) => {
-      const card = listingCard(l);
-      card.addEventListener('click', close); // navigate + dismiss the quiz
+      const card = listingCard(l, { query: lq });
+      card.addEventListener('click', close); // navigate (with dates) + dismiss the quiz
       const reasons = matchReasons(l, answers);
       return h('div', { class: 'quiz-match' }, card,
         reasons.length ? h('div', { class: 'quiz-why' }, '✓ ', reasons.join(' · ')) : null);

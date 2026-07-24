@@ -14,7 +14,7 @@ export async function loadFavorites() {
   favState.loaded = true;
 }
 
-export function listingCard(l) {
+export function listingCard(l, opts = {}) {
   const isFav = favState.ids.has(l.id);
   const fav = h('button', { class: `fav ${isFav ? 'on' : ''}`, title: 'Save', html: heartIcon(),
     onClick: async (e) => {
@@ -32,7 +32,7 @@ export function listingCard(l) {
     ? h('span', { class: 'rating' }, '★ ', l.rating.toFixed(2))
     : h('span', { class: 'rating' }, h('span', { class: 'chip' }, 'New'));
 
-  return h('article', { class: 'card', onClick: () => navigate(`/listing/${l.id}`) },
+  return h('article', { class: 'card', onClick: () => navigate(`/listing/${l.id}${opts.query ? '?' + opts.query : ''}`) },
     h('div', { class: 'media' },
       img(l.photo, { alt: l.title }),
       fav,

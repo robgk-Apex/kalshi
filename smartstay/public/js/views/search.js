@@ -109,7 +109,12 @@ export async function searchView() {
         h('p', { class: 'muted' }, 'Try widening your dates, price, or filters.'),
         h('button', { class: 'btn btn-outline', onClick: () => navigate('/search') }, 'Clear filters')));
     } else {
-      mount($('#search-grid'), h('div', { class: 'grid' }, ...listings.map(listingCard)));
+      const cardQ = new URLSearchParams();
+      if (query.checkIn) cardQ.set('checkIn', query.checkIn);
+      if (query.checkOut) cardQ.set('checkOut', query.checkOut);
+      if (query.guests) cardQ.set('guests', query.guests);
+      const cq = cardQ.toString();
+      mount($('#search-grid'), h('div', { class: 'grid' }, ...listings.map((l) => listingCard(l, { query: cq }))));
       requestAnimationFrame(() => initSearchMap(listings));
     }
   } catch (err) {

@@ -25,7 +25,7 @@ function reviewsBlock(listing) {
         h('p', { style: { margin: '6px 0 0' } }, r.comment)))));
 }
 
-function bookingWidget(listing) {
+function bookingWidget(listing, prefill = {}) {
   const card = h('div', { class: 'booking-card' });
   const state = { checkIn: '', checkOut: '', guests: 1, quote: null };
 
@@ -109,6 +109,20 @@ function bookingWidget(listing) {
         listing.pricing.monthlyDiscountPct ? `${listing.pricing.monthlyDiscountPct}% off monthly` : '') : null,
   );
   mount(summary, h('p', { class: 'muted center', style: { padding: '6px 0' } }, 'Add your dates for an exact total'));
+
+  // Pre-fill from dates/guests carried in (e.g. from the Trip Matcher quiz or search).
+  if (prefill.checkIn || prefill.guests) {
+    if (prefill.guests) guestsSel.value = String(Math.min(Number(prefill.guests) || 1, listing.maxGuests));
+    if (prefill.checkIn && prefill.checkOut) {
+      inInput.value = prefill.checkIn;
+      outInput.min = addDaysISO(prefill.checkIn, 1);
+      let checkOut = prefill.checkOut;
+      const nights = Math.round((new Date(checkOut) - new Date(prefill.checkIn)) / 86400000);
+      if ((listing.minNights || 1) > nights) checkOut = addDaysISO(prefill.checkIn, listing.minNights); // honor min-stay
+      outInput.value = checkOut;
+      refresh();
+    }
+  }
   return card;
 }
 
@@ -128,7 +142,7 @@ function confirmModal(listing, booking) {
   openModal(' ', body);
 }
 
-export async function listingView({ params }) {
+export async function listingView({ params, query = {} }) {
   const app = $('#app');
   mount(app, h('div', { class: 'container' }, h('div', { class: 'spinner' })));
   let data;
@@ -140,7 +154,7 @@ export async function listingView({ params }) {
   const favBtn = h('button', { class: 'btn btn-ghost', html: `<span style="display:flex;gap:6px;align-items:center"><span style="width:18px;display:inline-block">${heartIcon()}</span>${isFav ? 'Saved' : 'Save'}</span>`,
     onClick: async () => {
       if (!auth.isLoggedIn) return navigate('/login');
-      try { const { favorited } = await api.toggleFav(l.id); favorited ? favState.ids.add(l.id) : favState.ids.delete(l.id); toast(favorited ? 'Saved to wishlist' : 'Removed', 'ok'); listingView({ params }); }
+      try { const { favorited } = await api.toggleFav(l.id); favorited ? favState.ids.add(l.id) : favState.ids.delete(l.id); toast(favorited ? 'Saved to wishlist' : 'Removed', 'ok'); listingView({ params, query }); }
       catch (e) { toast(e.message, 'err'); }
     } });
 
@@ -176,7 +190,7 @@ export async function listingView({ params }) {
           mapBlock(l),
           reviewsBlock(l),
         ),
-        h('div', {}, bookingWidget(l)),
+        h('div', {}, bookingWidget(l, query)),
       )),
   );
 
