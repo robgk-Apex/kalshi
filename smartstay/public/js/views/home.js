@@ -2,6 +2,7 @@ import { h, mount, $, CATEGORY_ICONS } from '../ui.js';
 import { api, auth } from '../api.js';
 import { navigate } from '../router.js';
 import { listingCard, cardGridSkeleton, searchWidget } from '../components.js';
+import { openQuiz, shouldAutoQuiz } from './quiz.js';
 
 const HERO_BG = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2000&q=80';
 
@@ -45,6 +46,7 @@ export async function homeView() {
         h('h1', {}, 'Find your next stay in America'),
         h('p', {}, 'From cliffside villas to mountain cabins — book unforgettable homes for a weekend, a week, or a whole season. And you’ll never pay a booking fee.'),
         searchWidget({}, (q) => navigate('/search?' + q.toString())),
+        h('button', { class: 'quiz-hero-btn', onClick: openQuiz }, '✨ Not sure where to go? Take the 60-second quiz →'),
       )),
     h('div', { class: 'container' },
       h('div', { class: 'catrow' },
@@ -62,6 +64,9 @@ export async function homeView() {
     valueProps(),
     hostCta(),
   );
+
+  // First-time visitors get the Trip Matcher quiz automatically (once).
+  if (shouldAutoQuiz()) setTimeout(openQuiz, 600);
 
   try {
     const { listings } = await api.listings('?sort=rating');

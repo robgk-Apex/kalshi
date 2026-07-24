@@ -11,6 +11,7 @@ import { loginView, signupView } from './views/auth.js';
 import { tripsView, favoritesView, inboxView, profileView } from './views/account.js';
 import { hostView, hostEditView } from './views/host.js';
 import { aboutView } from './views/about.js';
+import { openQuiz } from './views/quiz.js';
 
 // ---- routes ----
 route('/', homeView);
@@ -23,6 +24,7 @@ route('/favorites', favoritesView);
 route('/inbox', inboxView);
 route('/profile', profileView);
 route('/about', aboutView);
+route('/quiz', () => { homeView(); openQuiz(); });
 route('/host', hostView);
 route('/host/new', hostEditView);
 route('/host/edit/:id', hostEditView);

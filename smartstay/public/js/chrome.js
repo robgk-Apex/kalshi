@@ -44,7 +44,7 @@ export function renderHeader() {
     h('a', { class: 'logo', href: '#/' }, h('span', { class: 'mark' }, '🏡'), h('b', {}, 'SmartStay'), h('span', { style: { color: 'var(--ink)', fontWeight: 700 } }, 'USA')),
     h('nav', { class: 'nav-links' },
       h('a', { class: 'nav-link', href: '#/search' }, 'Explore'),
-      h('a', { class: 'nav-link', href: '#/search?type=Cabin' }, 'Cabins'),
+      h('a', { class: 'nav-link', href: '#/quiz' }, '✨ Trip quiz'),
       h('a', { class: 'nav-link', href: auth.isLoggedIn ? '#/host' : '#/signup?role=host', style: { color: 'var(--brand)' } }, '🏡 List your property'),
     ),
     userMenu(),
