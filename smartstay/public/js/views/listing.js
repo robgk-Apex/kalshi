@@ -66,9 +66,10 @@ function bookingWidget(listing) {
       line(h('span', { class: 'u' }, `${usd(q.avgPerNight)} avg × ${q.nights} night${q.nights > 1 ? 's' : ''}`), usd(q.base)),
       q.discount ? line(q.discountLabel + ` (−${q.discountPct}%)`, '−' + usd(q.discount), 'discount') : null,
       q.cleaningFee ? line(h('span', { class: 'u' }, 'Cleaning fee'), usd(q.cleaningFee)) : null,
-      line(h('span', { class: 'u' }, 'Service fee'), usd(q.serviceFee)),
+      line(h('span', {}, 'SmartStay booking fee'), h('span', {}, h('span', { class: 'strike' }, usd(q.airbnbFee)), ' ', h('b', { style: { color: 'var(--green)' } }, 'FREE')), 'discount'),
       line(h('span', { class: 'u' }, 'Taxes'), usd(q.taxes)),
       line('Total (USD)', usd(q.total), 'total'),
+      q.savingsVsAirbnb ? h('div', { class: 'save-callout' }, `🎉 You’re saving ${usd(q.savingsVsAirbnb)} — Airbnb would add a ~14% guest fee. We never charge one.`) : null,
     );
   }
 
@@ -97,7 +98,8 @@ function bookingWidget(listing) {
         h('div', { class: 'bf' }, h('label', {}, 'Check-out'), outInput)),
       h('div', { class: 'bf rowtop' }, h('label', {}, 'Guests'), guestsSel)),
     reserveBtn,
-    h('p', { class: 'muted center', style: { fontSize: '13px', margin: '12px 0 0' } }, listing.instantBook ? 'You won’t be charged yet' : 'The host will confirm within 24h'),
+    h('p', { class: 'center', style: { fontSize: '13px', margin: '12px 0 0', color: 'var(--green)', fontWeight: 700 } }, '✓ No guest booking fees — ever'),
+    h('p', { class: 'muted center', style: { fontSize: '12.5px', margin: '2px 0 0' } }, listing.instantBook ? 'You won’t be charged yet' : 'The host will confirm within 24h'),
     summary,
     listing.pricing?.weeklyDiscountPct || listing.pricing?.monthlyDiscountPct ?
       h('div', { class: 'demo-note', style: { marginTop: '14px' } },

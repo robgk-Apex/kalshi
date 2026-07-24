@@ -2,9 +2,10 @@
 // Rates: nightly base, optional weekend override (Fri/Sat nights),
 // plus weekly / monthly length-of-stay discounts. Guest-side fees on top.
 
-const SERVICE_FEE_PCT = 0.12; // guest service fee
-const TAX_PCT = 0.08;         // occupancy / lodging tax estimate
-export const PLATFORM_COMMISSION = 0.20; // SmartStay's cut of host gross revenue
+const SERVICE_FEE_PCT = 0;    // NO guest booking fee — cheaper than Airbnb
+const TAX_PCT = 0.08;         // occupancy / lodging tax estimate (unavoidable, goes to the state)
+const AIRBNB_GUEST_FEE_PCT = 0.14; // typical Airbnb guest service fee, for savings comparison
+export const PLATFORM_COMMISSION = 0.20; // SmartStay's cut of host gross revenue (how we make money instead)
 
 // Host economics for a completed/active booking: gross (accommodation +
 // cleaning), SmartStay's 20% commission, and the host's net payout (80%).
@@ -83,9 +84,11 @@ export function quote(listing, checkIn, checkOut, guests = 1) {
   const discount = round2(base * (discountPct / 100));
   const subtotal = round2(base - discount);
   const cleaningFee = round2(p.cleaningFee || 0);
-  const serviceFee = round2(subtotal * SERVICE_FEE_PCT);
+  const serviceFee = round2(subtotal * SERVICE_FEE_PCT); // 0 — we don't charge guests
   const taxes = round2((subtotal + cleaningFee) * TAX_PCT);
   const total = round2(subtotal + cleaningFee + serviceFee + taxes);
+  // What the same stay would cost on Airbnb (their guest fee), for a savings callout.
+  const airbnbFee = round2(subtotal * AIRBNB_GUEST_FEE_PCT);
 
   return {
     ok: true,
@@ -100,6 +103,8 @@ export function quote(listing, checkIn, checkOut, guests = 1) {
     serviceFee,
     taxes,
     total,
+    airbnbFee,
+    savingsVsAirbnb: airbnbFee, // guests save the entire fee they'd have paid elsewhere
   };
 }
 

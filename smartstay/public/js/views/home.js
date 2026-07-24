@@ -27,10 +27,10 @@ function valueProps() {
     h('div', { class: 'container' },
       h('div', { class: 'section-head' }, h('div', {}, h('div', { class: 'eyebrow' }, 'Why SmartStay'), h('h2', {}, 'Stay your way — a night, a week, or a season'))),
       h('div', { class: 'stat-row' },
+        prop('💸', 'No booking fees', 'Guests never pay a service fee — so your total is lower than Airbnb, every time.'),
         prop('📅', 'Flexible lengths', 'Book by the weekend, week, or month with automatic long-stay discounts.'),
         prop('⚡', 'Instant Book', 'Reserve top homes in seconds — no waiting on approvals.'),
         prop('🛡️', 'Verified hosts', 'Every stay is backed by ratings, reviews, and secure checkout.'),
-        prop('🏡', 'Earn as a host', 'List your place and set your own nightly, weekly, and monthly rates.'),
       ),
     ));
 }
@@ -41,8 +41,9 @@ export async function homeView() {
     h('section', { class: 'hero' },
       h('div', { class: 'hero-bg', style: { backgroundImage: `url(${HERO_BG})` } }),
       h('div', { class: 'hero-inner container' },
+        h('div', { class: 'hero-badge' }, '✓ No guest booking fees — always cheaper than Airbnb'),
         h('h1', {}, 'Find your next stay in America'),
-        h('p', {}, 'From cliffside villas to mountain cabins — book unforgettable homes for a weekend, a week, or a whole season.'),
+        h('p', {}, 'From cliffside villas to mountain cabins — book unforgettable homes for a weekend, a week, or a whole season. And you’ll never pay a booking fee.'),
         searchWidget({}, (q) => navigate('/search?' + q.toString())),
       )),
     h('div', { class: 'container' },

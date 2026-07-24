@@ -26,8 +26,9 @@ export async function aboutView() {
           'We connect travelers with a hand-picked collection of homes across the country — cliffside villas, mountain cabins, ' +
           'downtown lofts, and beach cottages — and let you book them your way, whether that’s a spontaneous weekend, a working ' +
           'week, or a whole season. Every host sets their own nightly, weekly, and monthly rates, so longer stays come with real ' +
-          'savings, and every home is backed by verified reviews and secure checkout. No hidden math, no surprises — just a ' +
-          'transparent price, an interactive map, and a place that feels like yours the moment you walk in. For hosts, SmartStay ' +
+          'savings, and every home is backed by verified reviews and secure checkout. And unlike the other guys, we never charge ' +
+          'guests a booking fee — no hidden math, no surprises, just a lower total than you’d pay on Airbnb, plus an interactive ' +
+          'map and a place that feels like yours the moment you walk in. For hosts, SmartStay ' +
           'is the simplest way to turn a home into income, with full control over pricing, availability, and who stays. We’re ' +
           'building the most trusted, human, and genuinely beautiful way to travel across America — one great stay at a time.'),
         h('div', { class: 'stat-row', style: { marginTop: '34px' } },
@@ -40,8 +41,8 @@ export async function aboutView() {
       h('div', { class: 'container' },
         h('div', { class: 'section-head' }, h('div', {}, h('div', { class: 'eyebrow' }, 'What we stand for'), h('h2', {}, 'The SmartStay promise'))),
         h('div', { class: 'stat-row' },
+          value('💸', 'No booking fees', 'Guests never pay a service fee — your total is lower than Airbnb, every single time.'),
           value('📅', 'Book your way', 'Weekend, week, or month — with automatic long-stay discounts baked in.'),
-          value('🔎', 'Total transparency', 'See every fee before you book. The price you’re quoted is the price you pay.'),
           value('🛡️', 'Trust built in', 'Verified hosts, real guest reviews, and secure checkout on every stay.'),
           value('🗺️', 'Truly local', 'Interactive maps and honest descriptions so you always know where you’ll be.')),
       )),
