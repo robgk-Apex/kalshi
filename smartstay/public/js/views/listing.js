@@ -149,9 +149,8 @@ export async function listingView({ params }) {
 
   mount(app,
     h('div', { class: 'container detail-head' },
-      h('div', { class: 'spread wrap', style: { paddingTop: '14px' } },
-        h('button', { class: 'btn btn-outline', onClick: goBack }, '← Back'),
-        h('a', { class: 'btn btn-ghost', href: '#/' }, '🏡 Home')),
+      h('div', { style: { paddingTop: '14px' } },
+        h('button', { class: 'btn btn-outline', onClick: goBack }, '← Back')),
       h('div', { class: 'breadcrumb' }, h('a', { href: '#/search' }, 'Homes'), ' / ', h('a', { href: `#/search?city=${encodeURIComponent(l.state)}` }, `${l.city}, ${l.state}`), ' / ', l.type),
       h('div', { class: 'spread wrap' },
         h('h1', { class: 'detail-title' }, l.title),
