@@ -1,5 +1,5 @@
 import { h, mount, $, CATEGORY_ICONS } from '../ui.js';
-import { api } from '../api.js';
+import { api, auth } from '../api.js';
 import { navigate } from '../router.js';
 import { listingCard, cardGridSkeleton, searchWidget } from '../components.js';
 
@@ -78,6 +78,6 @@ function hostCta() {
         h('div', { style: { position: 'relative', padding: '48px', color: '#fff', maxWidth: '560px' } },
           h('h2', { style: { color: '#fff', fontSize: '34px' } }, 'Your home could be your next big earner'),
           h('p', { style: { fontSize: '17px', opacity: .95 } }, 'List in minutes, set your own weekend, weekly, and monthly rates, and welcome guests from across the country.'),
-          h('button', { class: 'btn btn-primary btn-lg', onClick: () => navigate('/host/new') }, 'Start hosting →')),
+          h('button', { class: 'btn btn-primary btn-lg', onClick: () => navigate(auth.isLoggedIn ? '/host/new' : '/signup?role=host') }, 'Start hosting →')),
       )));
 }

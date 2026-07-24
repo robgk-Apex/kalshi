@@ -18,10 +18,11 @@ function userMenu() {
       u ? h('a', { href: '#/host' }, '🏡 Hosting') : null,
       u ? h('a', { href: '#/profile' }, '⚙️ Account') : null,
       u ? h('div', { class: 'menu-sep' }) : null,
+      !u ? h('a', { href: '#/signup' }, '🧳 Sign up to book') : null,
+      !u ? h('a', { href: '#/signup?role=host' }, '🏡 Sign up as a host') : null,
       !u ? h('a', { href: '#/login' }, '➡️ Log in') : null,
-      !u ? h('a', { href: '#/signup' }, '✨ Sign up') : null,
       !u ? h('div', { class: 'menu-sep' }) : null,
-      h('a', { href: '#/host/new' }, '➕ List your home'),
+      h('a', { href: u ? '#/host/new' : '#/signup?role=host' }, '➕ List your property'),
       u ? h('button', { onClick: () => { auth.clear(); navigate('/'); toggle(false); } }, '🚪 Log out') : null,
     );
   };
@@ -44,7 +45,7 @@ export function renderHeader() {
     h('nav', { class: 'nav-links' },
       h('a', { class: 'nav-link', href: '#/search' }, 'Explore'),
       h('a', { class: 'nav-link', href: '#/search?type=Cabin' }, 'Cabins'),
-      h('a', { class: 'nav-link', href: '#/host/new' }, 'Become a host'),
+      h('a', { class: 'nav-link', href: auth.isLoggedIn ? '#/host' : '#/signup?role=host', style: { color: 'var(--brand)' } }, '🏡 List your property'),
     ),
     userMenu(),
   ));
