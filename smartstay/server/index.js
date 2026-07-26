@@ -284,6 +284,16 @@ app.post('/api/host/listings/:lid/block', authenticate(), wrap((req, res) => {
   res.json({ listing: l });
 }));
 
+// Host removes a manual date block.
+app.post('/api/host/listings/:lid/unblock', authenticate(), wrap((req, res) => {
+  const l = db().listings.find((x) => x.id === req.params.lid);
+  if (!l || l.hostId !== req.user.id) return res.status(403).json({ error: 'Not allowed.' });
+  const i = Number(req.body?.index);
+  if (l.blockedDates && i >= 0 && i < l.blockedDates.length) l.blockedDates.splice(i, 1);
+  save();
+  res.json({ listing: l });
+}));
+
 app.get('/api/host/bookings', authenticate(), wrap((req, res) => {
   const myListingIds = new Set(db().listings.filter((l) => l.hostId === req.user.id).map((l) => l.id));
   const items = db().bookings

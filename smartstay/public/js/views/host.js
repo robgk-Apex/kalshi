@@ -1,8 +1,71 @@
-import { h, mount, $, img, usd, fmtRange, empty, toast, openModal } from '../ui.js';
+import { h, mount, $, img, usd, fmtRange, empty, toast, openModal, todayISO } from '../ui.js';
 import { api, auth } from '../api.js';
 import { navigate } from '../router.js';
 
 let META = null;
+
+// Booking calendar for a host's listing: view bookings, block/unblock dates, revenue split.
+function openCalendar(listing, bookings, reload) {
+  const mine = bookings.filter((b) => b.listingId === listing.id && b.status !== 'cancelled');
+  const now = new Date();
+  const state = { y: now.getFullYear(), m: now.getMonth() };
+  const body = h('div', {});
+  openModal('📅 ' + listing.title, body, { width: '640px' });
+  const iso = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  const status = (s) => {
+    for (const b of mine) if (s >= b.checkIn && s < b.checkOut) return { t: 'booked', b };
+    for (const r of (listing.blockedDates || [])) if (s >= r.checkIn && s < r.checkOut) return { t: 'blocked', r };
+    return { t: '' };
+  };
+  const from = h('input', { type: 'date', class: 'input' });
+  const to = h('input', { type: 'date', class: 'input' });
+  async function block() {
+    if (!from.value || !to.value) { toast('Pick a start and end date', 'err'); return; }
+    try { const { listing: up } = await api.post(`/host/listings/${listing.id}/block`, { checkIn: from.value, checkOut: to.value }); listing.blockedDates = up.blockedDates; toast('Dates blocked', 'ok'); from.value = ''; to.value = ''; render(); reload && reload(); }
+    catch (e) { toast(e.message, 'err'); }
+  }
+  async function unblock(i) {
+    try { const { listing: up } = await api.post(`/host/listings/${listing.id}/unblock`, { index: i }); listing.blockedDates = up.blockedDates; toast('Unblocked', 'ok'); render(); reload && reload(); }
+    catch (e) { toast(e.message, 'err'); }
+  }
+  function render() {
+    const first = new Date(Date.UTC(state.y, state.m, 1));
+    const title = first.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    const dim = new Date(Date.UTC(state.y, state.m + 1, 0)).getUTCDate();
+    const dow = first.getUTCDay();
+    const today = todayISO();
+    const cells = [];
+    ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach((d) => cells.push(h('div', { class: 'cal-dow' }, d)));
+    for (let i = 0; i < dow; i++) cells.push(h('div', { class: 'cal-day muted' }));
+    for (let d = 1; d <= dim; d++) {
+      const s = iso(state.y, state.m, d); const st = status(s); const past = s < today && !st.t;
+      cells.push(h('div', { class: 'cal-day ' + (st.t || (past ? 'past' : '')), title: st.t === 'booked' ? `Booked — ${st.b.guest?.name || 'guest'}` : (st.t === 'blocked' ? 'Blocked' : '') }, String(d)));
+    }
+    const bl = listing.blockedDates || [];
+    const upcoming = mine.filter((b) => b.checkOut >= today).sort((a, b) => (a.checkIn < b.checkIn ? -1 : 1));
+    mount(body,
+      h('div', { class: 'demo-note', style: { marginTop: 0, fontWeight: 600 } }, `Gross ${usd(listing.gross || 0)} · SmartStay 20% ${usd(listing.platformFee || 0)} · Your payout ${usd(listing.payout || 0)}`),
+      h('div', { class: 'cal-head' },
+        h('button', { class: 'cal-nav', onClick: () => { state.m--; if (state.m < 0) { state.m = 11; state.y--; } render(); } }, '‹'),
+        h('strong', {}, title),
+        h('button', { class: 'cal-nav', onClick: () => { state.m++; if (state.m > 11) { state.m = 0; state.y++; } render(); } }, '›')),
+      h('div', { class: 'cal-grid' }, ...cells),
+      h('div', { class: 'cal-legend' },
+        h('span', {}, h('i', { style: { background: '#ffe1e7' } }), 'Booked'),
+        h('span', {}, h('i', { style: { background: '#e9ecef' } }), 'Blocked'),
+        h('span', {}, h('i', { style: { background: '#fff', border: '1px solid var(--line-2)' } }), 'Open')),
+      h('h4', { style: { margin: '18px 0 8px' } }, 'Block out dates'),
+      h('div', { class: 'row wrap', style: { gap: '10px', alignItems: 'end' } },
+        h('div', {}, h('label', { style: { fontSize: '12px', fontWeight: 700, display: 'block' } }, 'From'), from),
+        h('div', {}, h('label', { style: { fontSize: '12px', fontWeight: 700, display: 'block' } }, 'Until (checkout)'), to),
+        h('button', { class: 'btn btn-outline', onClick: block }, '🚫 Block')),
+      bl.length ? h('div', { class: 'stack', style: { gap: '8px', marginTop: '12px' } }, ...bl.map((r, i) => h('div', { class: 'blk-row' }, h('span', {}, '🚫 ' + fmtRange(r.checkIn, r.checkOut)), h('button', { class: 'btn btn-ghost', onClick: () => unblock(i) }, 'Unblock')))) : null,
+      h('h4', { style: { margin: '18px 0 8px' } }, `Upcoming bookings (${upcoming.length})`),
+      upcoming.length ? h('div', { class: 'stack', style: { gap: '8px' } }, ...upcoming.map((b) => h('div', { class: 'blk-row' }, h('span', {}, `${fmtRange(b.checkIn, b.checkOut)} · ${b.guests} guests · ${b.guest?.name || 'Guest'}`), h('strong', { style: { color: 'var(--green)' } }, usd(b.payout || 0))))) : h('p', { class: 'muted' }, 'No upcoming bookings yet.'),
+    );
+  }
+  render();
+}
 
 const PRESET_PHOTOS = [
   '1568605114967-8130f3a36994', '1512917774080-9991f1c4c750', '1600585154340-be6161a56a0c',
@@ -53,7 +116,7 @@ export async function hostView() {
 
     h('h3', {}, 'Your listings'),
     listings.length
-      ? h('div', { class: 'stack', style: { gap: '14px' } }, ...listings.map((l) => listingRow(l, reload)))
+      ? h('div', { class: 'stack', style: { gap: '14px' } }, ...listings.map((l) => listingRow(l, reload, bookings)))
       : empty('🏡', 'No listings yet', 'List your first home and start earning.', h('button', { class: 'btn btn-primary', onClick: () => navigate('/host/new') }, 'Get started')),
 
     bookings.length ? h('div', {}, h('h3', { style: { marginTop: '34px' } }, 'All bookings'),
@@ -61,14 +124,15 @@ export async function hostView() {
   ));
 }
 
-function listingRow(l, reload) {
+function listingRow(l, reload, bookings = []) {
   return h('div', { class: 'list-row' },
     img(l.photo, { class: 'thumb', onClick: () => navigate(`/listing/${l.id}`) }),
     h('div', { class: 'grow' },
       h('strong', {}, l.title),
       h('div', { class: 'muted' }, `${l.city}, ${l.state} · ${usd(l.fromNightly)}/night`),
       h('div', { class: 'muted', style: { fontSize: '13.5px' } }, `${l.bookingCount} bookings · ${usd(l.payout || 0)} payout · ${l.rating ? '★ ' + l.rating.toFixed(1) : 'No reviews'}`)),
-    h('div', { class: 'row' },
+    h('div', { class: 'row wrap' },
+      h('button', { class: 'btn btn-outline', onClick: () => openCalendar(l, bookings, reload) }, '📅 Calendar'),
       h('button', { class: 'btn btn-outline', onClick: () => navigate(`/host/edit/${l.id}`) }, 'Edit'),
       h('button', { class: 'btn btn-ghost', onClick: async () => {
         if (!confirm(`Delete "${l.title}"? This cannot be undone.`)) return;

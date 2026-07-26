@@ -239,6 +239,21 @@ section.block { padding: 44px 0; }
 .quiz-hero-btn:active { transform: scale(.97); }
 .quiz-why { margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--green); line-height: 1.45; }
 
+/* Host booking calendar */
+.cal-head { display:flex; align-items:center; justify-content:space-between; margin:14px 0 8px; }
+.cal-nav { width:34px; height:34px; border-radius:8px; border:1px solid var(--line-2); background:#fff; font-size:16px; }
+.cal-nav:hover { background:var(--bg-2); }
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
+.cal-dow { text-align:center; font-size:11px; font-weight:800; color:var(--ink-3); padding:4px 0; }
+.cal-day { aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:9px; font-size:13.5px; font-weight:600; border:1px solid var(--line); background:#fff; }
+.cal-day.muted { border:none; background:none; }
+.cal-day.past { color:var(--line-2); background:var(--bg-2); }
+.cal-day.booked { background:#ffe1e7; border-color:#ffc2ce; color:var(--brand-dark); }
+.cal-day.blocked { background:#e9ecef; border-color:#d3d8de; color:var(--ink-3); }
+.cal-legend { display:flex; gap:16px; flex-wrap:wrap; font-size:12.5px; color:var(--ink-3); margin-top:10px; }
+.cal-legend i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
+.blk-row { display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid var(--line); border-radius:10px; padding:8px 12px; font-size:14px; }
+
 /* Reviews */
 .review-summary { display:flex; align-items:center; gap:14px; font-size:22px; font-weight:700; }
 .reviews-grid { display:grid; grid-template-columns:1fr 1fr; gap: 22px 44px; margin-top: 22px; }
