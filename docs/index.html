@@ -153,6 +153,22 @@ section.block{padding:44px 0}
 .quiz-hero-btn:hover{background:rgba(255,255,255,.28)}
 .quiz-hero-btn:active{transform:scale(.97)}
 .quiz-why{margin-top:8px;font-size:13px;font-weight:600;color:var(--green);line-height:1.45}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin:14px 0 8px}
+.cal-nav{width:34px;height:34px;border-radius:8px;border:1px solid var(--line-2);background:#fff;font-size:16px}
+.cal-nav:hover{background:var(--bg-2)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.cal-dow{text-align:center;font-size:11px;font-weight:800;color:var(--ink-3);padding:4px 0}
+.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:9px;font-size:13.5px;font-weight:600;border:1px solid var(--line);background:#fff}
+.cal-day.muted{border:none;background:none}
+.cal-day.past{color:var(--line-2);background:var(--bg-2)}
+.cal-day.booked{background:#ffe1e7;border-color:#ffc2ce;color:var(--brand-dark);cursor:default}
+.cal-day.blocked{background:#e9ecef;border-color:#d3d8de;color:var(--ink-3);cursor:default}
+.cal-day.sel{outline:2px solid var(--ink);outline-offset:-2px}
+.cal-day.pick{cursor:pointer}
+.cal-day.pick:hover{border-color:var(--ink)}
+.cal-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-3);margin-top:10px}
+.cal-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.blk-row{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:14px}
 .hero-badge{display:inline-block;background:rgba(0,138,5,.92);color:#fff;font-weight:700;font-size:14px;padding:8px 16px;border-radius:999px;margin-bottom:18px;box-shadow:var(--shadow)}
 .review-summary{display:flex;align-items:center;gap:14px;font-size:22px;font-weight:700}
 .reviews-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px 44px;margin-top:22px}
@@ -347,11 +363,10 @@ const daysFromNow=n=>{const d=new Date();d.setUTCDate(d.getUTCDate()+n);return d
 const isoAgo=d=>{const x=new Date();x.setUTCDate(x.getUTCDate()-d);return x.toISOString();};
 const AMENITY_VOCAB=['Wifi','Kitchen','Pool','Hot tub','Free parking','Air conditioning','Heating','Washer','Dryer','EV charger','Gym','Pets allowed','Fireplace','Beach access','Lake access','Mountain view','Ocean view','Workspace','BBQ grill','Patio','Ski-in/ski-out'];
 const TYPE_VOCAB=['House','Apartment','Cabin','Condo','Villa','Cottage','Loft','Townhouse'];
-const LS_KEY='smartstay_pages_db_v2';
+const LS_KEY='smartstay_pages_db_v3';
 let DB;
 
 
-/* ---- Curated real property photography (stock homes/interiors) ---- */
 const _U=(id)=>'https://images.unsplash.com/photo-'+id+'?auto=format&fit=crop&w=1200&q=80';
 const _IDS={
  'Malibu':['1613490493576-7fde63acd811','1600585154340-be6161a56a0c','1600566753086-00f18fb6b3ea','1600210492486-724fe5c67fb0','1600607687939-ce8a6c25118c'],
@@ -367,8 +382,7 @@ const _IDS={
  'Sedona':['1600585152220-90363fe7e115','1568605114967-8130f3a36994','1600210492486-724fe5c67fb0','1600607687939-ce8a6c25118c'],
  'Outer Banks':['1600596542815-ffad4c1539a9','1512917774080-9991f1c4c750','1449844908441-8829872d2607','1600566753086-00f18fb6b3ea'],
 };
-const PHOTOS_BY_CITY={};
-for(const [c,ids] of Object.entries(_IDS)) PHOTOS_BY_CITY[c]=ids.map(_U);
+const PHOTOS_BY_CITY={};for(const [c,ids] of Object.entries(_IDS)) PHOTOS_BY_CITY[c]=ids.map(_U);
 const PRESET_REAL=['1568605114967-8130f3a36994','1512917774080-9991f1c4c750','1600585154340-be6161a56a0c','1600596542815-ffad4c1539a9','1600607687939-ce8a6c25118c','1600566753086-00f18fb6b3ea','1570129477492-45c003edd2be','1449844908441-8829872d2607','1613490493576-7fde63acd811','1502672260266-1c1ef2d93688','1560448204-e02f11c3d0e2','1493809842364-78817add7ffb'].map(_U);
 
 function seedDB(){
@@ -508,6 +522,15 @@ function dispatch(method,path,body){
     const u=need();const l=DB.listings.find(x=>x.id===p.lid);if(!l)err(404,'Listing not found.');
     if(l.hostId!==u.id)err(403,'You can only delete your own listings.');
     DB.listings=DB.listings.filter(x=>x.id!==l.id);saveDB();return{ok:true};
+  }
+  if(p=M('POST','/host/listings/:lid/block')){
+    const u=need();const l=DB.listings.find(x=>x.id===p.lid);if(!l||l.hostId!==u.id)err(403,'Not allowed.');
+    const{checkIn,checkOut}=body||{};if(!checkIn||!checkOut||nightsBetween(checkIn,checkOut)<=0)err(400,'Pick a valid start and end date.');
+    l.blockedDates=l.blockedDates||[];l.blockedDates.push({checkIn,checkOut});saveDB();return{listing:l};
+  }
+  if(p=M('POST','/host/listings/:lid/unblock')){
+    const u=need();const l=DB.listings.find(x=>x.id===p.lid);if(!l||l.hostId!==u.id)err(403,'Not allowed.');
+    const i=+(body?.index);if(l.blockedDates&&i>=0&&i<l.blockedDates.length)l.blockedDates.splice(i,1);saveDB();return{listing:l};
   }
   if(p=M('GET','/host/bookings')){
     const u=need();const ids=new Set(DB.listings.filter(l=>l.hostId===u.id).map(l=>l.id));
@@ -796,8 +819,38 @@ async function inboxView(){if(!requireAuth())return;const app=$('#app');mount(ap
 function profileView(){if(!requireAuth())return;const app=$('#app');const u=auth.user;const name=h('input',{class:'input',value:u.name});const bio=h('textarea',{class:'input',placeholder:'Tell guests a little about yourself…'});bio.value=u.bio||'';const isHost=h('input',{type:'checkbox',checked:u.isHost});mount(app,h('div',{class:'container',style:{paddingTop:'30px',paddingBottom:'40px',maxWidth:'620px'}},h('h1',{style:{fontSize:'30px'}},'Account'),h('div',{class:'row',style:{margin:'18px 0'}},img(u.avatar,{class:'avatar',style:{width:'76px',height:'76px'}}),h('div',{},h('strong',{style:{fontSize:'18px'}},u.name),h('div',{class:'muted'},u.email))),h('div',{class:'form'},h('div',{class:'field-group'},h('label',{},'Name'),name),h('div',{class:'field-group'},h('label',{},'About'),bio),h('label',{class:'check'},isHost,'🏡 Enable hosting'),h('button',{class:'btn btn-primary',style:{alignSelf:'flex-start'},onClick:async()=>{try{const{user}=await api.patch('/auth/me',{name:name.value,bio:bio.value,isHost:isHost.checked});auth.update(user);toast('Profile saved','ok');}catch(e){toast(e.message,'err');}}},'Save changes'),h('div',{class:'menu-sep'}),h('button',{class:'btn btn-outline',style:{alignSelf:'flex-start'},onClick:()=>{auth.clear();navigate('/');}},'Log out'))));}
 
 const PRESET_PHOTOS=PRESET_REAL;
+function openCalendar(listing,bookings,reload){
+  const mine=bookings.filter(b=>b.listingId===listing.id&&b.status!=='cancelled');
+  const now=new Date();const state={y:now.getFullYear(),m:now.getMonth()};
+  const body=h('div',{});openModal('📅 '+listing.title,body,{width:'640px'});
+  const iso=(y,m,d)=>`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  const status=(s)=>{for(const b of mine){if(s>=b.checkIn&&s<b.checkOut)return{t:'booked',b};}for(const r of (listing.blockedDates||[])){if(s>=r.checkIn&&s<r.checkOut)return{t:'blocked',r};}return{t:''};};
+  const from=h('input',{type:'date',class:'input'}),to=h('input',{type:'date',class:'input'});
+  async function block(){if(!from.value||!to.value){toast('Pick a start and end date','err');return;}try{const{listing:up}=await api.post(`/host/listings/${listing.id}/block`,{checkIn:from.value,checkOut:to.value});listing.blockedDates=up.blockedDates;toast('Dates blocked','ok');from.value='';to.value='';render();reload&&reload();}catch(e){toast(e.message,'err');}}
+  async function unblock(i){try{const{listing:up}=await api.post(`/host/listings/${listing.id}/unblock`,{index:i});listing.blockedDates=up.blockedDates;toast('Unblocked','ok');render();reload&&reload();}catch(e){toast(e.message,'err');}}
+  function render(){
+    const first=new Date(Date.UTC(state.y,state.m,1));const title=first.toLocaleDateString('en-US',{month:'long',year:'numeric',timeZone:'UTC'});
+    const dim=new Date(Date.UTC(state.y,state.m+1,0)).getUTCDate();const dow=first.getUTCDay();const today=todayISO();
+    const cells=[];['S','M','T','W','T','F','S'].forEach(d=>cells.push(h('div',{class:'cal-dow'},d)));
+    for(let i=0;i<dow;i++)cells.push(h('div',{class:'cal-day muted'}));
+    for(let d=1;d<=dim;d++){const s=iso(state.y,state.m,d);const st=status(s);const past=s<today&&!st.t;cells.push(h('div',{class:'cal-day '+(st.t||(past?'past':'')),title:st.t==='booked'?`Booked — ${st.b.guest?.name||'guest'}`:(st.t==='blocked'?'Blocked':'')},String(d)));}
+    const bl=listing.blockedDates||[];const upcoming=mine.filter(b=>b.checkOut>=today).sort((a,b)=>a.checkIn<b.checkIn?-1:1);
+    mount(body,
+      h('div',{class:'demo-note',style:{marginTop:0,fontWeight:600}},`Gross ${usd(listing.gross||0)} · SmartStay 20% ${usd(listing.platformFee||0)} · Your payout ${usd(listing.payout||0)}`),
+      h('div',{class:'cal-head'},h('button',{class:'cal-nav',onClick:()=>{state.m--;if(state.m<0){state.m=11;state.y--;}render();}},'‹'),h('strong',{},title),h('button',{class:'cal-nav',onClick:()=>{state.m++;if(state.m>11){state.m=0;state.y++;}render();}},'›')),
+      h('div',{class:'cal-grid'},...cells),
+      h('div',{class:'cal-legend'},h('span',{},h('i',{style:{background:'#ffe1e7'}}),'Booked'),h('span',{},h('i',{style:{background:'#e9ecef'}}),'Blocked'),h('span',{},h('i',{style:{background:'#fff',border:'1px solid var(--line-2)'}}),'Open')),
+      h('h4',{style:{margin:'18px 0 8px'}},'Block out dates'),
+      h('div',{class:'row wrap',style:{gap:'10px',alignItems:'end'}},h('div',{},h('label',{style:{fontSize:'12px',fontWeight:700,display:'block'}},'From'),from),h('div',{},h('label',{style:{fontSize:'12px',fontWeight:700,display:'block'}},'Until (checkout)'),to),h('button',{class:'btn btn-outline',onClick:block},'🚫 Block')),
+      bl.length?h('div',{class:'stack',style:{gap:'8px',marginTop:'12px'}},...bl.map((r,i)=>h('div',{class:'blk-row'},h('span',{},'🚫 '+fmtRange(r.checkIn,r.checkOut)),h('button',{class:'btn btn-ghost',onClick:()=>unblock(i)},'Unblock')))):null,
+      h('h4',{style:{margin:'18px 0 8px'}},`Upcoming bookings (${upcoming.length})`),
+      upcoming.length?h('div',{class:'stack',style:{gap:'8px'}},...upcoming.map(b=>h('div',{class:'blk-row'},h('span',{},`${fmtRange(b.checkIn,b.checkOut)} · ${b.guests} guests · ${b.guest?.name||'Guest'}`),h('strong',{style:{color:'var(--green)'}},usd(b.payout||0))))):h('p',{class:'muted'},'No upcoming bookings yet.')
+    );
+  }
+  render();
+}
 async function hostView(){if(!requireAuth())return;const app=$('#app');mount(app,h('div',{class:'container',style:{paddingTop:'30px'}},h('h1',{style:{fontSize:'30px'}},'Hosting'),h('div',{class:'spinner'})));let listings=[],bookings=[];try{({listings}=await api.hostListings());({bookings}=await api.hostBookings());}catch(e){mount(app,h('div',{class:'container'},h('p',{class:'muted'},e.message)));return;}const grossTotal=listings.reduce((s,l)=>s+(l.gross||0),0);const feeTotal=listings.reduce((s,l)=>s+(l.platformFee||0),0);const payoutTotal=listings.reduce((s,l)=>s+(l.payout||0),0);const totalBookings=bookings.filter(b=>b.status!=='cancelled').length;const pending=bookings.filter(b=>b.status==='pending');const reload=()=>hostView();
-  const listingRow=l=>h('div',{class:'list-row'},img(l.photo,{class:'thumb',onClick:()=>navigate(`/listing/${l.id}`)}),h('div',{class:'grow'},h('strong',{},l.title),h('div',{class:'muted'},`${l.city}, ${l.state} · ${usd(l.fromNightly)}/night`),h('div',{class:'muted',style:{fontSize:'13.5px'}},`${l.bookingCount} bookings · ${usd(l.payout||0)} payout · ${l.rating?'★ '+l.rating.toFixed(1):'No reviews'}`)),h('div',{class:'row'},h('button',{class:'btn btn-outline',onClick:()=>navigate(`/host/edit/${l.id}`)},'Edit'),h('button',{class:'btn btn-ghost',onClick:async()=>{if(!confirm(`Delete "${l.title}"?`))return;try{await api.del(`/host/listings/${l.id}`);toast('Listing deleted','ok');reload();}catch(e){toast(e.message,'err');}}},'🗑️')));
+  const listingRow=l=>h('div',{class:'list-row'},img(l.photo,{class:'thumb',onClick:()=>navigate(`/listing/${l.id}`)}),h('div',{class:'grow'},h('strong',{},l.title),h('div',{class:'muted'},`${l.city}, ${l.state} · ${usd(l.fromNightly)}/night`),h('div',{class:'muted',style:{fontSize:'13.5px'}},`${l.bookingCount} bookings · ${usd(l.payout||0)} payout · ${l.rating?'★ '+l.rating.toFixed(1):'No reviews'}`)),h('div',{class:'row wrap'},h('button',{class:'btn btn-outline',onClick:()=>openCalendar(l,bookings,reload)},'📅 Calendar'),h('button',{class:'btn btn-outline',onClick:()=>navigate(`/host/edit/${l.id}`)},'Edit'),h('button',{class:'btn btn-ghost',onClick:async()=>{if(!confirm(`Delete "${l.title}"?`))return;try{await api.del(`/host/listings/${l.id}`);toast('Listing deleted','ok');reload();}catch(e){toast(e.message,'err');}}},'🗑️')));
   const bookingRow=(b,actionable)=>h('div',{class:'list-row'},b.listing?img(b.listing.photo,{class:'thumb'}):null,h('div',{class:'grow'},h('div',{class:'spread'},h('strong',{},b.listing?.title||'Listing'),h('span',{class:`badge status-${b.status}`},b.status)),h('div',{class:'muted'},`${b.guest?.name||'Guest'} · ${b.guests} guests · ${fmtRange(b.checkIn,b.checkOut)}`),h('div',{},h('strong',{class:'tnum',style:{color:'var(--green)'}},usd(b.payout||0)),h('span',{class:'muted'},` payout · ${usd(b.total)} gross`))),actionable&&b.status==='pending'?h('div',{class:'row'},h('button',{class:'btn btn-primary',onClick:async()=>{try{await api.post(`/bookings/${b.id}/confirm`);toast('Booking confirmed','ok');reload();}catch(e){toast(e.message,'err');}}},'Confirm'),h('button',{class:'btn btn-ghost',onClick:async()=>{try{await api.post(`/bookings/${b.id}/cancel`);toast('Declined','ok');reload();}catch(e){toast(e.message,'err');}}},'Decline')):null);
   mount(app,h('div',{class:'container',style:{paddingTop:'30px',paddingBottom:'50px'}},h('div',{class:'spread wrap'},h('h1',{style:{fontSize:'30px'}},`Welcome back, ${auth.user.name.split(' ')[0]}`),h('button',{class:'btn btn-primary',onClick:()=>navigate('/host/new')},'➕ Add a home')),h('div',{class:'stat-row'},h('div',{class:'stat'},h('div',{class:'n'},String(listings.length)),h('div',{class:'l'},'Active listings')),h('div',{class:'stat'},h('div',{class:'n'},String(totalBookings)),h('div',{class:'l'},'Total bookings')),h('div',{class:'stat'},h('div',{class:'n tnum',style:{color:'var(--green)'}},usd(payoutTotal)),h('div',{class:'l'},'Your payout (80%)')),h('div',{class:'stat'},h('div',{class:'n'},String(pending.length)),h('div',{class:'l'},'Pending requests'))),h('div',{class:'demo-note',style:{marginBottom:'24px',display:'flex',gap:'16px',flexWrap:'wrap',justifyContent:'space-between',alignItems:'center'}},h('span',{},'💸 SmartStay keeps 20% of gross booking revenue — you keep 80%.'),h('span',{style:{fontWeight:600}},`Gross ${usd(grossTotal)} · SmartStay fee ${usd(feeTotal)} · Your payout ${usd(payoutTotal)}`)),pending.length?h('div',{},h('h3',{},'⏳ Requests needing your review'),h('div',{class:'stack',style:{gap:'12px',marginBottom:'28px'}},...pending.map(b=>bookingRow(b,true)))):null,h('h3',{},'Your listings'),listings.length?h('div',{class:'stack',style:{gap:'14px'}},...listings.map(listingRow)):empty('🏡','No listings yet','List your first home and start earning.',h('button',{class:'btn btn-primary',onClick:()=>navigate('/host/new')},'Get started')),bookings.length?h('div',{},h('h3',{style:{marginTop:'34px'}},'All bookings'),h('div',{class:'stack',style:{gap:'12px'}},...bookings.map(b=>bookingRow(b,false)))):null));
 }
