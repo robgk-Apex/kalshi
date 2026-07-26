@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="SmartStay USA — rent beautiful homes across the USA. No guest booking fees, ever.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%A1%3C/text%3E%3C/svg%3E">
+<title>SmartStay USA — Book unforgettable stays</title>
+<style>
+:root{
+  --brand:#ff385c;--brand-dark:#e11d48;--brand-soft:#fff0f3;--ink:#1a1a1a;--ink-2:#4b4b4b;--ink-3:#767676;
+  --line:#ebebeb;--line-2:#dddddd;--bg:#fff;--bg-2:#f7f7f7;--gold:#f5b301;--green:#008a05;
+  --radius:16px;--radius-lg:24px;--shadow-sm:0 1px 2px rgba(0,0,0,.06),0 2px 8px rgba(0,0,0,.04);
+  --shadow:0 6px 20px rgba(0,0,0,.10);--shadow-lg:0 12px 40px rgba(0,0,0,.16);--maxw:1280px;--header-h:76px;
+  --serif:Georgia,'Times New Roman',serif;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--bg);line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{margin:0 0 .4em;line-height:1.15;letter-spacing:-.01em}
+h1{font-family:var(--serif);font-weight:700}
+a{color:inherit;text-decoration:none}
+img{display:block;max-width:100%}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:15px}
+.tnum{font-variant-numeric:tabular-nums}
+.container{max-width:var(--maxw);margin:0 auto;padding:0 40px}
+@media(max-width:740px){.container{padding:0 20px}}
+.muted{color:var(--ink-3)}.center{text-align:center}
+.row{display:flex;align-items:center;gap:12px}
+.spread{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.wrap{flex-wrap:wrap}.grow{flex:1}.hide{display:none!important}
+.stack{display:flex;flex-direction:column}
+.dot::before{content:"·";margin:0 6px;color:var(--ink-3)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid transparent;border-radius:10px;padding:11px 18px;font-weight:600;font-size:15px;background:var(--bg);color:var(--ink);transition:transform .08s,box-shadow .15s,background .15s,border-color .15s}
+.btn:active{transform:scale(.97)}
+.btn:focus-visible,.pill:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.btn-primary{background:linear-gradient(120deg,var(--brand),var(--brand-dark));color:#fff;box-shadow:0 4px 14px rgba(255,56,92,.35)}
+.btn-primary:hover{box-shadow:0 6px 22px rgba(255,56,92,.45)}
+.btn-outline{border-color:var(--line-2);background:#fff}.btn-outline:hover{border-color:var(--ink)}
+.btn-ghost{background:transparent}.btn-ghost:hover{background:var(--bg-2)}
+.btn-lg{padding:14px 26px;font-size:16px;border-radius:12px}.btn-block{width:100%}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--line-2);border-radius:999px;background:#fff;font-size:14px;font-weight:500;white-space:nowrap;transition:all .15s}
+.pill:hover{border-color:var(--ink)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;background:var(--brand-soft);color:var(--brand-dark);font-size:13px;font-weight:600}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;font-size:12.5px;font-weight:600;background:var(--bg-2)}
+.badge.instant{background:#eef7ee;color:var(--green)}
+.badge.status-confirmed{background:#eef7ee;color:var(--green)}
+.badge.status-pending{background:#fff7e6;color:#a86b00}
+.badge.status-completed{background:#eef2ff;color:#3b4cca}
+.badge.status-cancelled{background:#fdecec;color:#c62828}
+header#app-header{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:var(--header-h);gap:16px}
+.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:22px;color:var(--brand);letter-spacing:-.02em}
+.logo .mark{font-size:26px}.logo b{font-family:var(--serif);font-weight:700}
+.nav-links{display:flex;align-items:center;gap:6px}
+.nav-link{padding:9px 14px;border-radius:10px;font-weight:600;font-size:14.5px;color:var(--ink-2)}
+.nav-link:hover{background:var(--bg-2);color:var(--ink)}
+@media(max-width:740px){.nav-links{display:none}}
+.usermenu{display:flex;align-items:center;gap:8px;border:1px solid var(--line-2);border-radius:999px;padding:6px 6px 6px 14px;background:#fff;transition:box-shadow .15s}
+.usermenu:hover{box-shadow:var(--shadow-sm)}
+.avatar{border-radius:50%;object-fit:cover;background:var(--bg-2)}
+.menu-pop{position:absolute;right:0;top:calc(100% + 10px);background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg);min-width:240px;overflow:hidden;padding:8px;z-index:60}
+.menu-pop a,.menu-pop button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:11px 12px;border:none;background:none;border-radius:10px;font-size:14.5px;color:var(--ink)}
+.menu-pop a:hover,.menu-pop button:hover{background:var(--bg-2)}
+.menu-sep{height:1px;background:var(--line);margin:8px 0}
+.hero{position:relative;min-height:560px;display:flex;align-items:center;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background-size:cover;background-position:center}
+.hero-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.32),rgba(0,0,0,.12) 40%,rgba(0,0,0,.5))}
+.hero-inner{position:relative;color:#fff;padding:80px 0}
+.hero h1{font-size:clamp(38px,6vw,68px);color:#fff;max-width:820px;text-shadow:0 2px 30px rgba(0,0,0,.35);text-wrap:balance}
+.hero p{font-size:clamp(17px,2.2vw,21px);max-width:560px;opacity:.95;text-shadow:0 1px 12px rgba(0,0,0,.4)}
+.searchbox{background:#fff;border-radius:999px;box-shadow:var(--shadow-lg);display:flex;align-items:stretch;padding:8px;max-width:920px;margin-top:34px}
+.searchbox .field{flex:1;padding:12px 22px;border-radius:999px;cursor:pointer;position:relative}
+.searchbox .field:hover{background:var(--bg-2)}
+.searchbox .field label{display:block;font-size:12.5px;font-weight:700;color:var(--ink)}
+.searchbox .field input{border:none;outline:none;width:100%;padding:2px 0;background:none;font-size:15px;color:var(--ink)}
+.searchbox .field input::placeholder{color:var(--ink-3)}
+.searchbox .vsep{width:1px;background:var(--line);margin:10px 0}
+.searchbox .submit{align-self:center}
+.searchbox .submit button{height:56px;padding:0 26px;border-radius:999px}
+@media(max-width:820px){.searchbox{flex-direction:column;border-radius:24px}.searchbox .vsep{display:none}.searchbox .field{border-bottom:1px solid var(--line);border-radius:14px}.searchbox .submit button{width:100%}}
+.catrow{display:flex;gap:8px;overflow-x:auto;padding:20px 0 4px;scrollbar-width:none}
+.catrow::-webkit-scrollbar{display:none}
+.cat{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 12px;border:none;background:none;color:var(--ink-3);border-bottom:2px solid transparent;min-width:64px;font-size:12px;font-weight:600;transition:color .15s,border-color .15s}
+.cat .ico{font-size:24px;filter:grayscale(.4)}
+.cat:hover{color:var(--ink)}
+.cat.active{color:var(--ink);border-bottom-color:var(--ink)}
+.cat.active .ico{filter:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:28px 24px}
+.card{cursor:pointer}
+.card .media{position:relative;border-radius:var(--radius);overflow:hidden;aspect-ratio:20/19;background:var(--bg-2)}
+.card .media img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+.card:hover .media img{transform:scale(1.05)}
+.card .fav{position:absolute;top:12px;right:12px;width:34px;height:34px;border:none;background:none;color:#fff;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4));display:grid;place-items:center}
+.card .fav svg{width:24px;height:24px}
+.card .fav.on svg{fill:var(--brand);stroke:#fff}
+.card .tag{position:absolute;top:12px;left:12px;background:#fff;border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:700;box-shadow:var(--shadow-sm)}
+.card .body{padding:11px 2px 0}
+.card .title{font-weight:600;font-size:15.5px;margin:0;display:flex;justify-content:space-between;gap:8px}
+.card .rating{display:inline-flex;align-items:center;gap:4px;font-weight:600;font-size:14px;white-space:nowrap}
+.card .sub{color:var(--ink-3);font-size:14.5px;margin:2px 0}
+.card .price{margin-top:5px;font-size:15px}.card .price b{font-weight:700}
+section.block{padding:44px 0}
+.section-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:22px;gap:12px}
+.section-head h2{font-size:28px}
+.eyebrow{color:var(--brand);font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.detail-head{padding-top:26px}.detail-title{font-size:30px}
+.gallery{display:grid;grid-template-columns:2fr 1fr 1fr;grid-template-rows:1fr 1fr;gap:8px;border-radius:var(--radius-lg);overflow:hidden;height:460px;margin-top:18px}
+.gallery img{width:100%;height:100%;object-fit:cover;cursor:pointer;transition:filter .2s}
+.gallery img:hover{filter:brightness(.92)}
+.gallery .main{grid-row:1/3}
+@media(max-width:740px){.gallery{grid-template-columns:1fr;grid-template-rows:none;height:auto}.gallery img:not(.main){display:none}.gallery .main{height:300px}}
+.detail-grid{display:grid;grid-template-columns:1fr 380px;gap:60px;padding:34px 0;align-items:start}
+@media(max-width:900px){.detail-grid{grid-template-columns:1fr;gap:24px}}
+.detail-sec{padding:28px 0;border-top:1px solid var(--line)}
+.detail-sec:first-child{border-top:none;padding-top:0}
+.amenity-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 20px}
+.amenity{display:flex;align-items:center;gap:12px;font-size:15px}
+.amenity .ico{font-size:20px;width:26px;text-align:center}
+@media(max-width:600px){.amenity-grid{grid-template-columns:1fr}}
+.booking-card{position:sticky;top:calc(var(--header-h) + 18px);border:1px solid var(--line-2);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:24px}
+.booking-card .price-lead{font-size:22px;font-weight:700}
+.booking-fields{border:1px solid var(--line-2);border-radius:12px;overflow:hidden;margin:16px 0}
+.booking-fields .r2{display:grid;grid-template-columns:1fr 1fr}
+.bf{padding:10px 14px;border:1px solid transparent}
+.bf+.bf{border-left:1px solid var(--line-2)}
+.booking-fields .r2+.bf,.bf.rowtop{border-top:1px solid var(--line-2)}
+.bf label{display:block;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+.bf input,.bf select{border:none;outline:none;width:100%;background:none;padding:2px 0;font-size:14px}
+.price-line{display:flex;justify-content:space-between;padding:8px 0;font-size:15px;color:var(--ink-2)}
+.price-line.total{border-top:1px solid var(--line);margin-top:8px;padding-top:16px;font-weight:700;color:var(--ink);font-size:16.5px}
+.price-line .u{text-decoration:underline}
+.price-line.discount{color:var(--green)}
+.strike{text-decoration:line-through;color:var(--ink-3)}
+.save-callout{margin-top:12px;background:#eef7ee;color:var(--green);border:1px solid #cde9cd;border-radius:12px;padding:12px 14px;font-size:13.5px;font-weight:600;text-align:center}
+.quiz-overlay{position:fixed;inset:0;z-index:150;background:linear-gradient(160deg,#ffffff,#fff6f8 60%,#fff0f3);overflow:auto;animation:fade .2s}
+.quiz-inner{max-width:760px;margin:0 auto;padding:30px 24px 70px;min-height:100%}
+.quiz-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.quiz-bar{height:6px;background:var(--line);border-radius:999px;margin:22px 0 30px;overflow:hidden}
+.quiz-bar span{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand-dark));transition:width .3s ease}
+.quiz-q{font-size:clamp(24px,4vw,34px);font-family:var(--serif);margin:4px 0 0;text-wrap:balance}
+.quiz-opts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}
+.quiz-opt{display:flex;align-items:center;gap:14px;border:1.5px solid var(--line-2);border-radius:16px;padding:18px;cursor:pointer;background:#fff;font-size:16px;font-weight:600;transition:border-color .15s,transform .08s,box-shadow .15s;text-align:left}
+.quiz-opt:hover{border-color:var(--ink);transform:translateY(-2px);box-shadow:var(--shadow)}
+.quiz-opt.on{border-color:var(--brand);background:var(--brand-soft)}
+.quiz-opt .ico{font-size:30px;line-height:1}
+.quiz-opt small{display:block;color:var(--ink-3);font-weight:500;font-size:13px;margin-top:2px}
+@media(max-width:560px){.quiz-opts{grid-template-columns:1fr}}
+.quiz-hero-btn{display:inline-block;margin-top:20px;background:rgba(255,255,255,.16);color:#fff;border:1.5px solid rgba(255,255,255,.55);backdrop-filter:blur(6px);border-radius:999px;padding:12px 22px;font-weight:700;font-size:15px;transition:background .15s,transform .08s}
+.quiz-hero-btn:hover{background:rgba(255,255,255,.28)}
+.quiz-hero-btn:active{transform:scale(.97)}
+.quiz-why{margin-top:8px;font-size:13px;font-weight:600;color:var(--green);line-height:1.45}
+.hero-badge{display:inline-block;background:rgba(0,138,5,.92);color:#fff;font-weight:700;font-size:14px;padding:8px 16px;border-radius:999px;margin-bottom:18px;box-shadow:var(--shadow)}
+.review-summary{display:flex;align-items:center;gap:14px;font-size:22px;font-weight:700}
+.reviews-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px 44px;margin-top:22px}
+@media(max-width:740px){.reviews-grid{grid-template-columns:1fr}}
+.review .who{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.review .who .avatar{width:44px;height:44px}
+.stars{color:var(--gold);letter-spacing:1px}
+.form{display:flex;flex-direction:column;gap:14px}
+.field-group{display:flex;flex-direction:column;gap:6px}
+.field-group label{font-size:13px;font-weight:700}
+.input,.form input,.form select,.form textarea{border:1px solid var(--line-2);border-radius:10px;padding:12px 14px;font-size:15px;width:100%;background:#fff;transition:border-color .15s,box-shadow .15s}
+.input:focus,.form input:focus,.form select:focus,.form textarea:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 3px rgba(0,0,0,.06)}
+.form textarea{resize:vertical;min-height:100px}
+.auth-wrap{max-width:440px;margin:60px auto;border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+.auth-head{padding:22px 26px;border-bottom:1px solid var(--line);text-align:center;font-weight:700}
+.auth-body{padding:26px}
+.demo-note{background:var(--brand-soft);border:1px dashed #ffb3c1;border-radius:10px;padding:12px 14px;font-size:13px;color:var(--brand-dark)}
+.role-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.role-card{border:1.5px solid var(--line-2);border-radius:14px;padding:16px 14px;cursor:pointer;text-align:center;transition:border-color .15s,background .15s,transform .08s;background:#fff}
+.role-card:hover{border-color:var(--ink)}
+.role-card:active{transform:scale(.98)}
+.role-card.on{border-color:var(--brand);background:var(--brand-soft);box-shadow:0 0 0 3px rgba(255,56,92,.12)}
+.role-card .ico{font-size:30px}
+.role-card b{display:block;margin-top:6px;font-size:15px}
+.role-card span{display:block;color:var(--ink-3);font-size:12.5px;margin-top:3px;line-height:1.35}
+@media(max-width:440px){.role-cards{grid-template-columns:1fr}}
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;margin:8px 0 28px}
+.stat{border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;background:linear-gradient(180deg,#fff,#fcfcfc)}
+.stat .n{font-size:30px;font-weight:800;letter-spacing:-.02em}
+.stat .l{color:var(--ink-3);font-size:13.5px;font-weight:600}
+.list-row{display:flex;gap:16px;align-items:center;border:1px solid var(--line);border-radius:var(--radius);padding:12px}
+.list-row .thumb{width:110px;height:84px;border-radius:12px;object-fit:cover;flex-shrink:0;cursor:pointer}
+@media(max-width:600px){.list-row{flex-wrap:wrap}.list-row .thumb{width:100%;height:150px}}
+.check-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.check{display:flex;align-items:center;gap:8px;border:1px solid var(--line-2);border-radius:10px;padding:10px 12px;font-size:14px;cursor:pointer}
+.check input{width:auto}.check.on{border-color:var(--ink);background:var(--bg-2)}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);display:grid;place-items:center;z-index:100;padding:20px;animation:fade .15s}
+.modal{background:#fff;border-radius:var(--radius-lg);max-width:560px;width:100%;max-height:90vh;overflow:auto;box-shadow:var(--shadow-lg);animation:pop .18s}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff}
+.modal-body{padding:22px}
+.iconbtn{width:34px;height:34px;border-radius:50%;border:none;background:var(--bg-2);display:grid;place-items:center;font-size:18px}
+.iconbtn:hover{background:var(--line)}
+@keyframes fade{from{opacity:0}}
+@keyframes pop{from{opacity:0;transform:translateY(12px) scale(.98)}}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:120;display:grid;place-items:center}
+.lightbox img{max-width:92vw;max-height:86vh;border-radius:12px}
+.lightbox .lb-close{position:absolute;top:20px;right:24px;color:#fff;font-size:30px;background:none;border:none}
+.lightbox .lb-nav{position:absolute;top:50%;transform:translateY(-50%);font-size:40px;color:#fff;background:none;border:none;padding:0 20px}
+.lightbox .prev{left:10px}.lightbox .next{right:10px}
+#toast-root{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:10px;align-items:center}
+.toast{background:var(--ink);color:#fff;padding:13px 20px;border-radius:12px;box-shadow:var(--shadow-lg);font-size:14.5px;font-weight:500;animation:pop .2s;max-width:90vw}
+.toast.err{background:#c62828}.toast.ok{background:#0a7d2c}
+footer#app-footer{border-top:1px solid var(--line);background:var(--bg-2);margin-top:40px}
+.footcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:28px;padding:44px 0}
+.footcols h4{font-size:14px}
+.footcols a{display:block;color:var(--ink-3);font-size:14px;padding:5px 0}
+.footcols a:hover{color:var(--ink);text-decoration:underline}
+.footbar{border-top:1px solid var(--line-2);padding:20px 0;font-size:13.5px;color:var(--ink-3)}
+.skel{background:linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);background-size:200% 100%;animation:shimmer 1.3s infinite;border-radius:var(--radius)}
+@keyframes shimmer{to{background-position:-200% 0}}
+.spinner{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite;margin:40px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:70px 20px;color:var(--ink-3)}
+.empty .big{font-size:46px;margin-bottom:10px}
+.map-box{height:320px;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--line);background:#e8eef3;position:relative}
+.map-pin{position:absolute;top:50%;left:50%;transform:translate(-50%,-100%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:999px;font-weight:700;font-size:14px;box-shadow:var(--shadow)}
+.map-pin::after{content:"";position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--ink)}
+.breadcrumb{color:var(--ink-3);font-size:14px;padding:16px 0}
+.breadcrumb a:hover{text-decoration:underline;color:var(--ink)}
+.smap{position:relative;height:420px;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--line);background:#dfe7ef;touch-action:none;cursor:grab;user-select:none}
+.smap.search{height:620px;border-radius:var(--radius);position:sticky;top:calc(var(--header-h) + 16px)}
+.smap.grabbing{cursor:grabbing}
+.smap svg{width:100%;height:100%;display:block}
+.smap-ctrl{position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:6px;z-index:5}
+.smap-ctrl button{width:34px;height:34px;border-radius:8px;border:1px solid var(--line-2);background:#fff;font-size:18px;box-shadow:var(--shadow-sm);display:grid;place-items:center}
+.smap-ctrl button:hover{background:var(--bg-2)}
+.smap-badge{position:absolute;left:12px;bottom:12px;background:rgba(255,255,255,.92);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;color:var(--ink-3);z-index:5}
+.spin{cursor:pointer}
+.spin rect{fill:#fff;stroke:rgba(0,0,0,.14)}
+.spin text{fill:var(--ink);font-weight:700;pointer-events:none}
+.spin.on rect{fill:var(--ink);stroke:var(--ink)}
+.spin.on text{fill:#fff}
+.smap-pop{position:absolute;z-index:6;width:200px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow-lg);cursor:pointer;transform:translate(-50%,calc(-100% - 14px))}
+.smap-pop img{width:100%;height:112px;object-fit:cover}
+.smap-pop .p{padding:8px 10px}.smap-pop .p b{display:block;font-size:14px}.smap-pop .p .s{color:var(--ink-3);font-size:13px}
+.search-split{display:grid;grid-template-columns:1fr 42%;gap:24px;align-items:start}
+.search-split.list-only{grid-template-columns:1fr}
+.search-split.list-only .search-map-col{display:none}
+@media(max-width:900px){.search-split{grid-template-columns:1fr}.search-map-col{display:none}.search-split.map-only .search-grid-col{display:none}.search-split.map-only .search-map-col{display:block}.search-split.map-only .smap.search{height:70vh;position:relative;top:0}}
+.viewtoggle{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);z-index:40;box-shadow:var(--shadow-lg)}
+@media(min-width:901px){.viewtoggle{display:none}}
+.demo-banner{background:linear-gradient(120deg,var(--brand),var(--brand-dark));color:#fff;text-align:center;font-size:13px;font-weight:600;padding:7px 16px}
+.demo-banner a{text-decoration:underline}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+</style>
+</head>
+<body>
+
+<div class="demo-banner">✨ Live interactive demo — data lives in your browser. Log in with <strong>guest@smartstay.us</strong> / <strong>password123</strong> or sign up.</div>
+<header id="app-header"></header>
+<main id="app"></main>
+<footer id="app-footer"></footer>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+
+<script type="module">
+/* ============================================================
+   SmartStay USA — self-contained demo build
+   Real UI + pricing/availability/booking logic, in-browser data.
+   ============================================================ */
+
+/* ---------- generated artwork (CSP-safe SVG data URIs) ---------- */
+const PHOTO_EMOJI = ['🏡','🛋️','🛏️','🌅','🍳','🛁'];
+// Per-property visual themes so each home's imagery corresponds to its character.
+const PHOTO_THEMES = {
+  beach:    { hue: 202, emojis: ['🌊','🏖️','🏝️','⛱️','🐚'] },
+  mountain: { hue: 158, emojis: ['🏔️','🌲','🎿','🔥','🛷'] },
+  desert:   { hue: 28,  emojis: ['🌵','🏜️','🌅','☀️','🦎'] },
+  lake:     { hue: 188, emojis: ['🛶','🏞️','🎣','🌲','🚣'] },
+  city:     { hue: 258, emojis: ['🏙️','🌆','🎨','🍸','🚕'] },
+  house:    { hue: 20,  emojis: ['🏡','🛋️','🛏️','🍳','🌿'] },
+};
+function svgPhoto(hue, emoji, label){
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'>
+    <defs>
+      <linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
+        <stop offset='0' stop-color='hsl(${hue},68%,60%)'/>
+        <stop offset='1' stop-color='hsl(${(hue+42)%360},60%,42%)'/>
+      </linearGradient>
+      <radialGradient id='r' cx='30%' cy='24%' r='80%'>
+        <stop offset='0' stop-color='rgba(255,255,255,.4)'/>
+        <stop offset='1' stop-color='rgba(255,255,255,0)'/>
+      </radialGradient>
+    </defs>
+    <rect width='800' height='600' fill='url(#g)'/>
+    <rect width='800' height='600' fill='url(#r)'/>
+    <text x='400' y='340' font-size='200' text-anchor='middle' opacity='.30'>${emoji}</text>
+    <rect x='0' y='460' width='800' height='140' fill='rgba(0,0,0,.20)'/>
+    <text x='42' y='540' font-size='34' fill='rgba(255,255,255,.96)' font-family='Georgia,serif'>${label}</text>
+  </svg>`;
+  return 'data:image/svg+xml,' + encodeURIComponent(svg);
+}
+function photoSet(theme, label){
+  const t = PHOTO_THEMES[theme] || PHOTO_THEMES.house;
+  return t.emojis.map((e,i)=>svgPhoto((t.hue + i*9) % 360, e, label));
+}
+function svgAvatar(name){
+  const initials = name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  let hue=0; for(const c of name) hue=(hue+c.charCodeAt(0))%360;
+  const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'>
+    <rect width='120' height='120' fill='hsl(${hue},55%,55%)'/>
+    <text x='60' y='76' font-size='52' text-anchor='middle' fill='#fff' font-family='Georgia,serif'>${initials}</text></svg>`;
+  return 'data:image/svg+xml,'+encodeURIComponent(svg);
+}
+const HERO_BG = 'https://loremflickr.com/1600/900/beach,house?lock=7';
+
+/* ---------- pricing / availability engine ---------- */
+const SERVICE_FEE_PCT=0, TAX_PCT=0.08, AIRBNB_GUEST_FEE_PCT=0.14;
+const toUTC=s=>{const[y,m,d]=String(s).split('-').map(Number);return new Date(Date.UTC(y,m-1,d));};
+const nightsBetween=(a,b)=>Math.round((toUTC(b)-toUTC(a))/864e5);
+function eachNight(a,b){const out=[];for(let d=new Date(toUTC(a));d<toUTC(b);d.setUTCDate(d.getUTCDate()+1))out.push(new Date(d));return out;}
+const r2=n=>Math.round(n*100)/100;
+function quote(listing,checkIn,checkOut,guests=1){
+  const p=listing.pricing||{},nights=nightsBetween(checkIn,checkOut);
+  if(!checkIn||!checkOut||isNaN(nights)||nights<=0)return{ok:false,error:'Select valid check-in and check-out dates.'};
+  if((listing.minNights||1)>nights)return{ok:false,error:`This home has a ${listing.minNights}-night minimum.`};
+  if(guests>(listing.maxGuests||1))return{ok:false,error:`This home hosts up to ${listing.maxGuests} guests.`};
+  let base=0;
+  for(const n of eachNight(checkIn,checkOut)){const dow=n.getUTCDay();const wknd=dow===5||dow===6;base+=(wknd&&p.weekendNightly)?p.weekendNightly:p.nightly;}
+  let dPct=0,dLabel='';
+  if(nights>=28&&p.monthlyDiscountPct){dPct=p.monthlyDiscountPct;dLabel='Monthly discount';}
+  else if(nights>=7&&p.weeklyDiscountPct){dPct=p.weeklyDiscountPct;dLabel='Weekly discount';}
+  const discount=r2(base*dPct/100),subtotal=r2(base-discount),cleaningFee=r2(p.cleaningFee||0);
+  const serviceFee=r2(subtotal*SERVICE_FEE_PCT),taxes=r2((subtotal+cleaningFee)*TAX_PCT);
+  const total=r2(subtotal+cleaningFee+serviceFee+taxes);
+  const airbnbFee=r2(subtotal*AIRBNB_GUEST_FEE_PCT);
+  return{ok:true,nights,base:r2(base),avgPerNight:r2(base/nights),discountPct:dPct,discountLabel:dLabel,discount,subtotal,cleaningFee,serviceFee,taxes,total,airbnbFee,savingsVsAirbnb:airbnbFee};
+}
+const fromNightly=l=>Math.min(l.pricing?.nightly??Infinity,l.pricing?.weekendNightly??Infinity);
+const overlap=(a1,a2,b1,b2)=>toUTC(a1)<toUTC(b2)&&toUTC(b1)<toUTC(a2);
+function blockedRanges(l,bookings){
+  const active=bookings.filter(b=>b.listingId===l.id&&['pending','confirmed'].includes(b.status)).map(b=>({checkIn:b.checkIn,checkOut:b.checkOut}));
+  return[...active,...(l.blockedDates||[])];
+}
+const isAvailable=(l,bookings,ci,co)=>!blockedRanges(l,bookings).some(rg=>overlap(ci,co,rg.checkIn,rg.checkOut));
+const PLATFORM_COMMISSION=0.20; // SmartStay's cut of host gross revenue
+function hostEconomics(booking){const gross=r2((booking.subtotal||0)+(booking.cleaningFee||0));const platformFee=r2(gross*PLATFORM_COMMISSION);const payout=r2(gross-platformFee);return{gross,platformFee,payout};}
+
+/* ---------- in-browser database ---------- */
+const uid=()=>crypto.randomUUID?.()||Math.random().toString(36).slice(2)+Date.now().toString(36);
+const daysFromNow=n=>{const d=new Date();d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
+const isoAgo=d=>{const x=new Date();x.setUTCDate(x.getUTCDate()-d);return x.toISOString();};
+const AMENITY_VOCAB=['Wifi','Kitchen','Pool','Hot tub','Free parking','Air conditioning','Heating','Washer','Dryer','EV charger','Gym','Pets allowed','Fireplace','Beach access','Lake access','Mountain view','Ocean view','Workspace','BBQ grill','Patio','Ski-in/ski-out'];
+const TYPE_VOCAB=['House','Apartment','Cabin','Condo','Villa','Cottage','Loft','Townhouse'];
+const LS_KEY='smartstay_pages_db_v1';
+let DB;
+
+
+/* ---- Real property photography (loads on a normal browser / GitHub Pages) ---- */
+const _LF=(kw,lock)=>'https://loremflickr.com/800/600/'+kw+'?lock='+lock;
+const _KW={
+  'Malibu':['villa','pool','ocean','interior'],
+  'Aspen':['cabin','snow','fireplace','interior'],
+  'Austin':['apartment','city','livingroom','kitchen'],
+  'Miami Beach':['beach','pool','apartment','balcony'],
+  'Lake Tahoe':['lake','cabin','forest','interior'],
+  'Nashville':['house','porch','livingroom','bedroom'],
+  'Scottsdale':['desert','pool','house','patio'],
+  'Savannah':['cottage','garden','house','interior'],
+  'Big Bear Lake':['cabin','forest','mountain','interior'],
+  'Brooklyn':['apartment','city','livingroom','bedroom'],
+  'Sedona':['desert','mountain','house','patio'],
+  'Outer Banks':['beach','house','ocean','deck'],
+};
+const PHOTOS_BY_CITY={};
+let _lk=10;
+for(const [city,kws] of Object.entries(_KW)){ PHOTOS_BY_CITY[city]=kws.map(kw=>_LF(kw,++_lk)); }
+const PRESET_REAL=['house','villa','cabin','apartment','pool','interior','livingroom','bedroom','kitchen','beach','cottage','loft'].map((kw,i)=>_LF(kw,100+i));
+
+function seedDB(){
+  const users=[],listings=[],reviews=[],bookings=[],favorites=[],messages=[];
+  const mk=(name,email,isHost)=>{const u={id:uid(),name,email:email.toLowerCase(),password:'password123',isHost,avatar:svgAvatar(name),bio:isHost?'Superhost sharing beautiful spaces across the country.':'',createdAt:isoAgo(400)};users.push(u);return u;};
+  const sofia=mk('Sofia Reyes','sofia@smartstay.us',true),marcus=mk('Marcus Bell','marcus@smartstay.us',true),priya=mk('Priya Nair','priya@smartstay.us',true);
+  const demo=mk('Demo Guest','guest@smartstay.us',false);
+  const reviewers=[mk('James Carter','james@example.com',false),mk('Emily Zhang','emily@example.com',false),mk('Diego Alvarez','diego@example.com',false),mk('Hannah Lee','hannah@example.com',false),mk('Tom Okafor','tom@example.com',false)];
+  const L=[
+    {host:sofia,title:'Cliffside Malibu Villa with Infinity Pool',type:'Villa',city:'Malibu',state:'CA',bedrooms:4,beds:5,bathrooms:4,maxGuests:8,desc:'Wake up to the Pacific from every room. This architectural showcase perches above Zuma Beach with floor-to-ceiling glass, an infinity pool that melts into the horizon, and a chef’s kitchen built for long, slow mornings.',amenities:['Wifi','Kitchen','Pool','Hot tub','Ocean view','Free parking','Air conditioning','EV charger','Workspace','BBQ grill','Patio'],pricing:{nightly:1450,weekendNightly:1750,weeklyDiscountPct:12,monthlyDiscountPct:28,cleaningFee:350},minNights:3,instantBook:true},
+    {host:marcus,title:'Ski-in/Ski-out Aspen Mountain Lodge',type:'Cabin',city:'Aspen',state:'CO',bedrooms:5,beds:7,bathrooms:4,maxGuests:10,desc:'Timber, stone, and a roaring fireplace at 8,000 feet. Click out of your skis straight onto the deck, then thaw out in the private hot tub under the stars. Sleeps the whole crew.',amenities:['Wifi','Kitchen','Hot tub','Fireplace','Ski-in/ski-out','Mountain view','Free parking','Heating','Washer','Dryer','Pets allowed'],pricing:{nightly:980,weekendNightly:1200,weeklyDiscountPct:10,monthlyDiscountPct:25,cleaningFee:275},minNights:2,instantBook:true},
+    {host:priya,title:'Downtown Austin Loft, Steps from Rainey St.',type:'Apartment',city:'Austin',state:'TX',bedrooms:2,beds:2,bathrooms:2,maxGuests:4,desc:'A light-drenched loft in the heart of it all — exposed brick, 14-ft ceilings, and a rooftop pool with skyline views. Walk to live music, tacos, and the lake trail.',amenities:['Wifi','Kitchen','Pool','Gym','Air conditioning','Workspace','Washer','Dryer','Free parking'],pricing:{nightly:265,weekendNightly:340,weeklyDiscountPct:15,monthlyDiscountPct:35,cleaningFee:90},minNights:2,instantBook:true},
+    {host:sofia,title:'Art Deco Retreat on Miami Beach',type:'Condo',city:'Miami Beach',state:'FL',bedrooms:3,beds:4,bathrooms:2,maxGuests:6,desc:'Pastel-perfect Deco charm one block from the sand. Sip your morning cortadito on the balcony, then walk to Ocean Drive. Turquoise pool and cabanas downstairs.',amenities:['Wifi','Kitchen','Pool','Beach access','Air conditioning','Free parking','Gym','Patio'],pricing:{nightly:420,weekendNightly:520,weeklyDiscountPct:12,monthlyDiscountPct:30,cleaningFee:130},minNights:2,instantBook:false},
+    {host:marcus,title:'Lakefront A-Frame at Lake Tahoe',type:'Cabin',city:'Lake Tahoe',state:'CA',bedrooms:3,beds:4,bathrooms:2,maxGuests:7,desc:'A classic A-frame right on the water with a private dock. Paddleboard at sunrise, grill on the deck at sunset, and fall asleep to the sound of the lake.',amenities:['Wifi','Kitchen','Lake access','Fireplace','Mountain view','Free parking','Heating','BBQ grill','Pets allowed','Patio'],pricing:{nightly:510,weekendNightly:640,weeklyDiscountPct:14,monthlyDiscountPct:32,cleaningFee:160},minNights:2,instantBook:true},
+    {host:priya,title:'Restored Craftsman in East Nashville',type:'House',city:'Nashville',state:'TN',bedrooms:3,beds:3,bathrooms:2,maxGuests:6,desc:'A lovingly restored 1920s Craftsman with a wraparound porch and a record player stocked with vinyl. Walk to the best coffee, honky-tonks, and hot chicken in town.',amenities:['Wifi','Kitchen','Air conditioning','Workspace','Washer','Dryer','Free parking','Fireplace','Pets allowed','Patio'],pricing:{nightly:240,weekendNightly:310,weeklyDiscountPct:15,monthlyDiscountPct:38,cleaningFee:85},minNights:2,instantBook:true},
+    {host:sofia,title:'Desert Modern Escape in Scottsdale',type:'House',city:'Scottsdale',state:'AZ',bedrooms:4,beds:5,bathrooms:3,maxGuests:8,desc:'Clean lines, warm concrete, and a heated pool framed by saguaros. Golf minutes away, Old Town nightlife closer still. Built for sun-soaked long stays.',amenities:['Wifi','Kitchen','Pool','Hot tub','Air conditioning','Free parking','EV charger','Workspace','BBQ grill','Patio'],pricing:{nightly:380,weekendNightly:470,weeklyDiscountPct:16,monthlyDiscountPct:40,cleaningFee:120},minNights:3,instantBook:true},
+    {host:marcus,title:'Historic Savannah Carriage House',type:'House',city:'Savannah',state:'GA',bedrooms:2,beds:2,bathrooms:2,maxGuests:4,desc:'Tucked behind a wrought-iron gate on a cobblestone lane, this romantic carriage house opens onto a private courtyard garden dripping with Spanish moss.',amenities:['Wifi','Kitchen','Air conditioning','Workspace','Washer','Free parking','Patio','Fireplace'],pricing:{nightly:210,weekendNightly:270,weeklyDiscountPct:13,monthlyDiscountPct:33,cleaningFee:75},minNights:2,instantBook:false},
+    {host:priya,title:'Big Bear Treehouse Cabin with Hot Tub',type:'Cabin',city:'Big Bear Lake',state:'CA',bedrooms:2,beds:3,bathrooms:1,maxGuests:5,desc:'A cozy cabin among the pines with a wood stove, a game loft, and a bubbling hot tub on the deck. Ten minutes to the slopes, five to the lake.',amenities:['Wifi','Kitchen','Hot tub','Fireplace','Mountain view','Free parking','Heating','Pets allowed','BBQ grill'],pricing:{nightly:195,weekendNightly:260,weeklyDiscountPct:12,monthlyDiscountPct:30,cleaningFee:70},minNights:2,instantBook:true},
+    {host:sofia,title:'Sunlit Brownstone Floor in Brooklyn',type:'Apartment',city:'Brooklyn',state:'NY',bedrooms:2,beds:2,bathrooms:1,maxGuests:4,desc:'A full parlor floor in a classic Park Slope brownstone — original moldings, a marble mantel, and a leafy backyard. Trains, cafés, and Prospect Park all around the corner.',amenities:['Wifi','Kitchen','Air conditioning','Workspace','Washer','Dryer','Heating','Patio'],pricing:{nightly:285,weekendNightly:340,weeklyDiscountPct:14,monthlyDiscountPct:36,cleaningFee:95},minNights:3,instantBook:false},
+    {host:marcus,title:'Red Rock Casita in Sedona',type:'House',city:'Sedona',state:'AZ',bedrooms:2,beds:2,bathrooms:2,maxGuests:4,desc:'Floor-to-ceiling windows frame the red rocks in every direction. Stargaze from the hot tub, hike from the door, and recharge in total desert quiet.',amenities:['Wifi','Kitchen','Hot tub','Mountain view','Air conditioning','Free parking','Workspace','Patio','Heating'],pricing:{nightly:320,weekendNightly:400,weeklyDiscountPct:15,monthlyDiscountPct:34,cleaningFee:100},minNights:2,instantBook:true},
+    {host:priya,title:'Oceanfront Cottage in the Outer Banks',type:'House',city:'Outer Banks',state:'NC',bedrooms:4,beds:6,bathrooms:3,maxGuests:9,desc:'Toes in the sand from the back deck. A breezy, weathered-shingle beach house with an outdoor shower, crab traps, and endless dune views. Built for family summers.',amenities:['Wifi','Kitchen','Beach access','Ocean view','Air conditioning','Free parking','Washer','Dryer','BBQ grill','Patio','Pets allowed'],pricing:{nightly:460,weekendNightly:580,weeklyDiscountPct:16,monthlyDiscountPct:30,cleaningFee:150},minNights:3,instantBook:false},
+  ];
+  const snippets=['Absolutely stunning — even better than the photos. The host thought of everything.','One of the best stays we’ve ever had. Spotless, stylish, and the location can’t be beat.','Check-in was seamless and the space was immaculate. We’re already planning our return.','Incredible views and so comfortable. The kitchen made cooking in a joy.','Perfect for our group. Great communication from the host and a dream location.','Cozy, quiet, and beautifully designed. We didn’t want to leave.','Everything worked flawlessly and it felt like home. Highly recommend.','The photos don’t do it justice. Five stars all around.'];
+  const COORDS={'Malibu':[34.0259,-118.7798],'Aspen':[39.1911,-106.8175],'Austin':[30.2585,-97.7386],'Miami Beach':[25.7907,-80.1300],'Lake Tahoe':[39.0968,-120.0324],'Nashville':[36.1780,-86.7370],'Scottsdale':[33.4942,-111.9261],'Savannah':[32.0746,-81.0912],'Big Bear Lake':[34.2439,-116.9114],'Brooklyn':[40.6782,-73.9442],'Sedona':[34.8697,-111.7610],'Outer Banks':[35.5585,-75.4665]};
+  const THEME_BY_CITY={'Malibu':'beach','Aspen':'mountain','Austin':'city','Miami Beach':'beach','Lake Tahoe':'lake','Nashville':'house','Scottsdale':'desert','Savannah':'house','Big Bear Lake':'mountain','Brooklyn':'city','Sedona':'desert','Outer Banks':'beach'};
+  L.forEach((it,idx)=>{
+    const theme=THEME_BY_CITY[it.city]||'house';
+    const[lat,lng]=COORDS[it.city]||[39.5,-98.35];
+    const listing={id:uid(),hostId:it.host.id,title:it.title,description:it.desc,type:it.type,city:it.city,state:it.state,lat,lng,bedrooms:it.bedrooms,beds:it.beds,bathrooms:it.bathrooms,maxGuests:it.maxGuests,amenities:it.amenities,photos:(PHOTOS_BY_CITY[it.city]||photoSet(theme,`${it.city}, ${it.state}`)),pricing:it.pricing,minNights:it.minNights,instantBook:it.instantBook,blockedDates:[],createdAt:isoAgo(30+idx*7)};
+    listings.push(listing);
+    const n=3+(idx%3);
+    for(let i=0;i<n;i++){const rv=reviewers[(i+idx)%reviewers.length];reviews.push({id:uid(),listingId:listing.id,guestId:rv.id,rating:(i%5===0)?4:5,comment:snippets[(i+idx)%snippets.length],createdAt:isoAgo(5+((i+idx*13)%110)),bookingId:null});}
+  });
+  bookings.push({id:uid(),listingId:listings[2].id,guestId:demo.id,checkIn:daysFromNow(-40),checkOut:daysFromNow(-36),guests:2,nights:4,subtotal:1100,cleaningFee:90,serviceFee:132,taxes:95,total:1417,status:'completed',createdAt:isoAgo(50)});
+  bookings.push({id:uid(),listingId:listings[5].id,guestId:demo.id,checkIn:daysFromNow(20),checkOut:daysFromNow(25),guests:4,nights:5,subtotal:1200,cleaningFee:85,serviceFee:144,taxes:103,total:1532,status:'confirmed',createdAt:isoAgo(3)});
+  favorites.push({userId:demo.id,listingId:listings[0].id},{userId:demo.id,listingId:listings[4].id});
+  return{users,listings,reviews,bookings,favorites,messages};
+}
+function loadDB(){try{const raw=localStorage.getItem(LS_KEY);if(raw){DB=JSON.parse(raw);return;}}catch(e){}DB=seedDB();saveDB();}
+function saveDB(){try{localStorage.setItem(LS_KEY,JSON.stringify(DB));}catch(e){}}
+loadDB();
+
+/* ---------- mock API (mirrors the real Express server) ---------- */
+const auth={
+  token:localStorage.getItem('ss_token')||null,
+  user:JSON.parse(localStorage.getItem('ss_user')||'null'),
+  set(t,u){this.token=t;this.user=u;localStorage.setItem('ss_token',t);localStorage.setItem('ss_user',JSON.stringify(u));window.dispatchEvent(new Event('auth-change'));},
+  update(u){this.user=u;localStorage.setItem('ss_user',JSON.stringify(u));window.dispatchEvent(new Event('auth-change'));},
+  clear(){this.token=null;this.user=null;localStorage.removeItem('ss_token');localStorage.removeItem('ss_user');window.dispatchEvent(new Event('auth-change'));},
+  get isLoggedIn(){return!!this.token;}
+};
+const pub=u=>{if(!u)return null;const{password,...r}=u;return r;};
+const currentUser=()=>DB.users.find(u=>u.id===auth.token)||null;
+function ratingFor(id){const rs=DB.reviews.filter(r=>r.listingId===id);if(!rs.length)return{average:null,count:0};return{average:r2(rs.reduce((s,r)=>s+r.rating,0)/rs.length),count:rs.length};}
+function hostCard(id){const u=DB.users.find(x=>x.id===id);return u?{id:u.id,name:u.name,avatar:u.avatar,bio:u.bio,isHost:u.isHost,createdAt:u.createdAt}:null;}
+function listingCardData(l){const{average,count}=ratingFor(l.id);return{id:l.id,title:l.title,type:l.type,city:l.city,state:l.state,lat:l.lat,lng:l.lng,minNights:l.minNights,weeklyDiscountPct:l.pricing?.weeklyDiscountPct||0,monthlyDiscountPct:l.pricing?.monthlyDiscountPct||0,bedrooms:l.bedrooms,beds:l.beds,bathrooms:l.bathrooms,maxGuests:l.maxGuests,amenities:l.amenities,photo:l.photos?.[0]||null,photos:l.photos,fromNightly:fromNightly(l),instantBook:l.instantBook,rating:average,reviewCount:count,hostId:l.hostId};}
+const err=(status,msg)=>{const e=new Error(msg);e.status=status;throw e;};
+function need(){const u=currentUser();if(!u)err(401,'Please sign in to continue.');return u;}
+function sanitize(body){const p=body.pricing||{};return{title:String(body.title||'').trim(),description:String(body.description||'').trim(),type:TYPE_VOCAB.includes(body.type)?body.type:'House',city:String(body.city||'').trim(),state:String(body.state||'').trim().toUpperCase().slice(0,2),bedrooms:Math.max(0,+body.bedrooms||1),beds:Math.max(1,+body.beds||1),bathrooms:Math.max(1,+body.bathrooms||1),maxGuests:Math.max(1,+body.maxGuests||2),amenities:Array.isArray(body.amenities)?body.amenities.filter(a=>AMENITY_VOCAB.includes(a)):[],photos:Array.isArray(body.photos)?body.photos.slice(0,12):[],pricing:{nightly:Math.max(10,+p.nightly||100),weekendNightly:p.weekendNightly?Math.max(10,+p.weekendNightly):0,weeklyDiscountPct:Math.min(60,Math.max(0,+p.weeklyDiscountPct||0)),monthlyDiscountPct:Math.min(70,Math.max(0,+p.monthlyDiscountPct||0)),cleaningFee:Math.max(0,+p.cleaningFee||0)},minNights:Math.max(1,+body.minNights||1),instantBook:!!body.instantBook};}
+
+function dispatch(method,path,body){
+  const seg=path.split('?')[0].split('/').filter(Boolean);
+  const query=Object.fromEntries(new URLSearchParams(path.split('?')[1]||''));
+  const M=(m,pattern)=>{if(method!==m)return null;const pp=pattern.split('/').filter(Boolean);if(pp.length!==seg.length)return null;const params={};for(let i=0;i<pp.length;i++){if(pp[i][0]===':')params[pp[i].slice(1)]=decodeURIComponent(seg[i]);else if(pp[i]!==seg[i])return null;}return params;}
+
+  let p;
+  if(p=M('POST','/auth/signup')){
+    const{name,email,password,isHost}=body||{};
+    if(!name||!email||!password)err(400,'Name, email and password are required.');
+    if(password.length<6)err(400,'Password must be at least 6 characters.');
+    if(DB.users.find(u=>u.email===email.toLowerCase()))err(409,'An account with this email already exists.');
+    const u={id:uid(),name:name.trim(),email:email.toLowerCase().trim(),password,isHost:!!isHost,avatar:svgAvatar(name),bio:'',createdAt:new Date().toISOString()};
+    DB.users.push(u);saveDB();return{token:u.id,user:pub(u)};
+  }
+  if(p=M('POST','/auth/login')){
+    const u=DB.users.find(x=>x.email===String(body?.email||'').toLowerCase());
+    if(!u||u.password!==(body?.password||''))err(401,'Incorrect email or password.');
+    return{token:u.id,user:pub(u)};
+  }
+  if(p=M('GET','/auth/me'))return{user:pub(need())};
+  if(p=M('PATCH','/auth/me')){const u=need();if(body.name!=null)u.name=String(body.name).trim();if(body.bio!=null)u.bio=String(body.bio);if(body.isHost!=null)u.isHost=!!body.isHost;saveDB();return{user:pub(u)};}
+
+  if(p=M('GET','/listings')){
+    let items=DB.listings.slice();const q=query;
+    if(q.q){const n=q.q.toLowerCase();items=items.filter(l=>[l.title,l.city,l.state,l.type,l.description].join(' ').toLowerCase().includes(n));}
+    if(q.city){const n=q.city.toLowerCase();items=items.filter(l=>`${l.city}, ${l.state}`.toLowerCase().includes(n)||l.city.toLowerCase().includes(n)||l.state.toLowerCase().includes(n));}
+    if(q.type)items=items.filter(l=>l.type.toLowerCase()===q.type.toLowerCase());
+    if(q.guests)items=items.filter(l=>l.maxGuests>=+q.guests);
+    if(q.minPrice)items=items.filter(l=>fromNightly(l)>=+q.minPrice);
+    if(q.maxPrice)items=items.filter(l=>fromNightly(l)<=+q.maxPrice);
+    if(q.instantBook==='true')items=items.filter(l=>l.instantBook);
+    if(q.amenities){const w=q.amenities.split(',').map(a=>a.trim().toLowerCase()).filter(Boolean);items=items.filter(l=>w.every(x=>l.amenities.map(a=>a.toLowerCase()).includes(x)));}
+    if(q.checkIn&&q.checkOut&&nightsBetween(q.checkIn,q.checkOut)>0)items=items.filter(l=>isAvailable(l,DB.bookings,q.checkIn,q.checkOut));
+    let cards=items.map(listingCardData);
+    if(q.sort==='price_asc')cards.sort((a,b)=>a.fromNightly-b.fromNightly);
+    else if(q.sort==='price_desc')cards.sort((a,b)=>b.fromNightly-a.fromNightly);
+    else cards.sort((a,b)=>(b.rating||0)-(a.rating||0));
+    return{count:cards.length,listings:cards};
+  }
+  if(p=M('GET','/listings/:lid')){
+    const l=DB.listings.find(x=>x.id===p.lid);if(!l)err(404,'Listing not found.');
+    const{average,count}=ratingFor(l.id);
+    const reviews=DB.reviews.filter(r=>r.listingId===l.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).map(r=>({...r,author:hostCard(r.guestId)}));
+    return{listing:{...l,rating:average,reviewCount:count,fromNightly:fromNightly(l),host:hostCard(l.hostId),blocked:blockedRanges(l,DB.bookings),reviews}};
+  }
+  if(p=M('POST','/listings/:lid/quote')){
+    const l=DB.listings.find(x=>x.id===p.lid);if(!l)err(404,'Listing not found.');
+    const q=quote(l,body?.checkIn,body?.checkOut,+body?.guests||1);if(!q.ok)err(400,q.error);
+    return{...q,available:isAvailable(l,DB.bookings,body.checkIn,body.checkOut)};
+  }
+  if(p=M('POST','/listings/:lid/reviews')){
+    const u=need();const l=DB.listings.find(x=>x.id===p.lid);if(!l)err(404,'Listing not found.');
+    const r=+body?.rating;if(!(r>=1&&r<=5))err(400,'Rating must be 1–5.');
+    if(!DB.bookings.some(b=>b.listingId===l.id&&b.guestId===u.id))err(403,'You can review a home after you’ve booked it.');
+    const review={id:uid(),listingId:l.id,guestId:u.id,bookingId:body.bookingId||null,rating:r,comment:String(body.comment||'').trim(),createdAt:new Date().toISOString()};
+    DB.reviews.push(review);saveDB();return{review};
+  }
+
+  if(p=M('GET','/host/listings')){
+    const u=need();const mine=DB.listings.filter(l=>l.hostId===u.id);
+    return{commissionPct:PLATFORM_COMMISSION*100,listings:mine.map(l=>{const bs=DB.bookings.filter(b=>b.listingId===l.id&&b.status!=='cancelled');const econ=bs.reduce((a,b)=>{const e=hostEconomics(b);a.gross+=e.gross;a.platformFee+=e.platformFee;a.payout+=e.payout;return a;},{gross:0,platformFee:0,payout:0});return{...listingCardData(l),bookingCount:bs.length,gross:Math.round(econ.gross),platformFee:Math.round(econ.platformFee),payout:Math.round(econ.payout),revenue:Math.round(econ.payout),description:l.description,pricing:l.pricing,minNights:l.minNights,blockedDates:l.blockedDates};})};
+  }
+  if(p=M('POST','/host/listings')){
+    const u=need();const clean=sanitize(body||{});
+    if(!clean.title||!clean.city||!clean.description)err(400,'Title, city and description are required.');
+    if(!clean.photos.length)err(400,'Please add at least one photo of your place.');
+    u.isHost=true;const listing={id:uid(),hostId:u.id,blockedDates:[],createdAt:new Date().toISOString(),...clean};
+    DB.listings.push(listing);saveDB();return{listing};
+  }
+  if(p=M('PUT','/host/listings/:lid')){
+    const u=need();const l=DB.listings.find(x=>x.id===p.lid);if(!l)err(404,'Listing not found.');
+    if(l.hostId!==u.id)err(403,'You can only edit your own listings.');
+    const clean=sanitize({...l,...body});if(!clean.photos.length)err(400,'Please add at least one photo of your place.');
+    Object.assign(l,clean);saveDB();return{listing:l};
+  }
+  if(p=M('DELETE','/host/listings/:lid')){
+    const u=need();const l=DB.listings.find(x=>x.id===p.lid);if(!l)err(404,'Listing not found.');
+    if(l.hostId!==u.id)err(403,'You can only delete your own listings.');
+    DB.listings=DB.listings.filter(x=>x.id!==l.id);saveDB();return{ok:true};
+  }
+  if(p=M('GET','/host/bookings')){
+    const u=need();const ids=new Set(DB.listings.filter(l=>l.hostId===u.id).map(l=>l.id));
+    return{bookings:DB.bookings.filter(b=>ids.has(b.listingId)).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).map(b=>({...b,...hostEconomics(b),listing:listingCardData(DB.listings.find(l=>l.id===b.listingId)),guest:hostCard(b.guestId)}))};
+  }
+
+  if(p=M('POST','/bookings')){
+    const u=need();const l=DB.listings.find(x=>x.id===body?.listingId);if(!l)err(404,'Listing not found.');
+    if(l.hostId===u.id)err(400,'You cannot book your own listing.');
+    const q=quote(l,body.checkIn,body.checkOut,+body.guests||1);if(!q.ok)err(400,q.error);
+    if(!isAvailable(l,DB.bookings,body.checkIn,body.checkOut))err(409,'Those dates are no longer available.');
+    const booking={id:uid(),listingId:l.id,guestId:u.id,checkIn:body.checkIn,checkOut:body.checkOut,guests:+body.guests||1,nights:q.nights,subtotal:q.subtotal,cleaningFee:q.cleaningFee,serviceFee:q.serviceFee,taxes:q.taxes,total:q.total,status:l.instantBook?'confirmed':'pending',createdAt:new Date().toISOString()};
+    DB.bookings.push(booking);saveDB();return{booking:{...booking,listing:listingCardData(l)}};
+  }
+  if(p=M('GET','/bookings')){
+    const u=need();const now=new Date();
+    return{bookings:DB.bookings.filter(b=>b.guestId===u.id).sort((a,b)=>new Date(b.checkIn)-new Date(a.checkIn)).map(b=>{const l=DB.listings.find(x=>x.id===b.listingId);return{...b,listing:l?listingCardData(l):null,host:l?hostCard(l.hostId):null,isPast:new Date(b.checkOut)<now,reviewed:DB.reviews.some(r=>r.listingId===b.listingId&&r.guestId===u.id&&r.bookingId===b.id)};})};
+  }
+  if(p=M('POST','/bookings/:bid/cancel')){
+    const u=need();const b=DB.bookings.find(x=>x.id===p.bid);if(!b)err(404,'Booking not found.');
+    const l=DB.listings.find(x=>x.id===b.listingId);if(b.guestId!==u.id&&!(l&&l.hostId===u.id))err(403,'Not allowed.');
+    b.status='cancelled';saveDB();return{booking:b};
+  }
+  if(p=M('POST','/bookings/:bid/confirm')){
+    const u=need();const b=DB.bookings.find(x=>x.id===p.bid);if(!b)err(404,'Booking not found.');
+    const l=DB.listings.find(x=>x.id===b.listingId);if(!l||l.hostId!==u.id)err(403,'Not allowed.');
+    b.status='confirmed';saveDB();return{booking:b};
+  }
+
+  if(p=M('GET','/favorites')){
+    const u=need();const ids=new Set(DB.favorites.filter(f=>f.userId===u.id).map(f=>f.listingId));
+    return{listings:DB.listings.filter(l=>ids.has(l.id)).map(listingCardData),ids:[...ids]};
+  }
+  if(p=M('POST','/favorites/:lid')){
+    const u=need();const ex=DB.favorites.find(f=>f.userId===u.id&&f.listingId===p.lid);let favorited;
+    if(ex){DB.favorites=DB.favorites.filter(f=>!(f.userId===u.id&&f.listingId===p.lid));favorited=false;}
+    else{DB.favorites.push({userId:u.id,listingId:p.lid});favorited=true;}
+    saveDB();return{favorited};
+  }
+  if(p=M('GET','/messages')){
+    const u=need();const mine=DB.messages.filter(m=>m.fromId===u.id||m.toId===u.id);const threads={};
+    for(const m of mine.sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt))){if(!threads[m.threadId]){const l=DB.listings.find(x=>x.id===m.listingId);threads[m.threadId]={threadId:m.threadId,listing:l?listingCardData(l):null,messages:[],lastAt:m.createdAt};}threads[m.threadId].messages.push(m);threads[m.threadId].lastAt=m.createdAt;}
+    return{threads:Object.values(threads).sort((a,b)=>new Date(b.lastAt)-new Date(a.lastAt))};
+  }
+  if(p=M('GET','/meta'))return{amenities:AMENITY_VOCAB,types:TYPE_VOCAB,cities:[...new Set(DB.listings.map(l=>`${l.city}, ${l.state}`))].sort()};
+  err(404,'Not found.');
+}
+async function call(method,path,body){
+  await new Promise(r=>setTimeout(r,120)); // tiny latency for realism
+  try{return dispatch(method,path,body);}catch(e){if(e.status===401)auth.clear();throw e;}
+}
+const api={
+  get:p=>call('GET',p),post:(p,b)=>call('POST',p,b),put:(p,b)=>call('PUT',p,b),patch:(p,b)=>call('PATCH',p,b),del:p=>call('DELETE',p),
+  signup:b=>call('POST','/auth/signup',b),login:b=>call('POST','/auth/login',b),me:()=>call('GET','/auth/me'),
+  listings:(q='')=>call('GET','/listings'+q),listing:id=>call('GET','/listings/'+id),quote:(id,b)=>call('POST',`/listings/${id}/quote`,b),
+  book:b=>call('POST','/bookings',b),myBookings:()=>call('GET','/bookings'),hostBookings:()=>call('GET','/host/bookings'),
+  hostListings:()=>call('GET','/host/listings'),favorites:()=>call('GET','/favorites'),toggleFav:id=>call('POST','/favorites/'+id),meta:()=>call('GET','/meta')
+};
+
+/* ---------- UI helpers ---------- */
+function h(tag,attrs={},...children){const el=document.createElement(tag);for(const[k,v]of Object.entries(attrs||{})){if(v==null||v===false)continue;if(k==='class')el.className=v;else if(k==='html')el.innerHTML=v;else if(k==='style'&&typeof v==='object')Object.assign(el.style,v);else if(k.startsWith('on')&&typeof v==='function')el.addEventListener(k.slice(2).toLowerCase(),v);else if(k==='dataset')Object.assign(el.dataset,v);else el.setAttribute(k,v);}for(const c of children.flat()){if(c==null||c===false)continue;el.append(c.nodeType?c:document.createTextNode(String(c)));}return el;}
+const $=(s,r=document)=>r.querySelector(s);
+function clear(el){if(!el)return el;while(el.firstChild)el.removeChild(el.firstChild);return el;}
+function mount(el,...nodes){if(!el)return el;clear(el);el.append(...nodes.flat().filter(Boolean));return el;}
+const usd=(n,c=false)=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:c?2:0,maximumFractionDigits:c?2:0});
+function fmtDate(str,opts={month:'short',day:'numeric'}){if(!str)return'';const[y,m,d]=str.split('-').map(Number);return new Date(Date.UTC(y,m-1,d)).toLocaleDateString('en-US',{...opts,timeZone:'UTC'});}
+function fmtRange(a,b){if(!a||!b)return'Add dates';return a.slice(0,7)===b.slice(0,7)?`${fmtDate(a)} – ${fmtDate(b,{day:'numeric'})}`:`${fmtDate(a)} – ${fmtDate(b)}`;}
+function timeAgo(iso){const s=(Date.now()-new Date(iso))/1000;for(const[n,u]of[['year',31536000],['month',2592000],['week',604800],['day',86400],['hour',3600],['minute',60]]){const v=Math.floor(s/u);if(v>=1)return`${v} ${n}${v>1?'s':''} ago`;}return'just now';}
+const todayISO=()=>new Date().toISOString().slice(0,10);
+function addDaysISO(iso,days){const[y,m,d]=iso.split('-').map(Number);const dt=new Date(Date.UTC(y,m-1,d));dt.setUTCDate(dt.getUTCDate()+days);return dt.toISOString().slice(0,10);}
+const starsStr=r=>{const f=Math.round(r||0);return'★★★★★'.slice(0,f)+'☆☆☆☆☆'.slice(0,5-f);};
+const CATEGORY_ICONS={All:'🏠',Villa:'🏖️',Cabin:'🌲',House:'🏡',Apartment:'🏙️',Condo:'🏢',Cottage:'🌾',Loft:'🎨',Townhouse:'🏘️','Ocean view':'🌊','Mountain view':'⛰️','Ski-in/ski-out':'🎿','Beach access':'🏝️','Hot tub':'♨️',Pool:'🏊'};
+const AMENITY_ICONS={Wifi:'📶',Kitchen:'🍳',Pool:'🏊','Hot tub':'♨️','Free parking':'🅿️','Air conditioning':'❄️',Heating:'🔥',Washer:'🧺',Dryer:'🌀','EV charger':'🔌',Gym:'🏋️','Pets allowed':'🐾',Fireplace:'🪵','Beach access':'🏝️','Lake access':'🛶','Mountain view':'⛰️','Ocean view':'🌊',Workspace:'💻','BBQ grill':'🍖',Patio:'🌿','Ski-in/ski-out':'🎿'};
+function img(src,attrs={}){const el=h('img',{src,loading:'lazy',...attrs});el.addEventListener('error',()=>{el.style.background='linear-gradient(135deg,#ffd7df,#ffeef1)';el.removeAttribute('src');},{once:true});return el;}
+function toast(msg,kind=''){const root=$('#toast-root');const t=h('div',{class:`toast ${kind}`},msg);root.append(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';},2600);setTimeout(()=>t.remove(),2950);}
+function openModal(title,bodyNode,opts={}){const root=$('#modal-root');const close=()=>{root.innerHTML='';document.body.style.overflow='';};const backdrop=h('div',{class:'modal-backdrop',onClick:e=>{if(e.target===backdrop)close();}},h('div',{class:'modal',style:opts.width?{maxWidth:opts.width}:{}},h('div',{class:'modal-head'},h('strong',{},title),h('button',{class:'iconbtn',onClick:close},'✕')),h('div',{class:'modal-body'},bodyNode)));document.body.style.overflow='hidden';mount(root,backdrop);return close;}
+function lightbox(photos,start=0){const root=$('#modal-root');let i=start;const render=()=>{mount(root,h('div',{class:'lightbox',onClick:e=>{if(e.target.classList.contains('lightbox'))close();}},h('button',{class:'lb-close',onClick:close},'✕'),photos.length>1&&h('button',{class:'lb-nav prev',onClick:()=>{i=(i-1+photos.length)%photos.length;render();}},'‹'),img(photos[i]),photos.length>1&&h('button',{class:'lb-nav next',onClick:()=>{i=(i+1)%photos.length;render();}},'›')));};const close=()=>{root.innerHTML='';document.body.style.overflow='';document.removeEventListener('keydown',key);};const key=e=>{if(e.key==='Escape')close();if(e.key==='ArrowRight'){i=(i+1)%photos.length;render();}if(e.key==='ArrowLeft'){i=(i-1+photos.length)%photos.length;render();}};document.addEventListener('keydown',key);document.body.style.overflow='hidden';render();}
+const heartIcon=()=>`<svg viewBox="0 0 32 32" fill="rgba(0,0,0,.5)" stroke="#fff" stroke-width="2"><path d="M16 28c7-4.7 12-10 12-16A6 6 0 0 0 16 8 6 6 0 0 0 4 12c0 6 5 11.3 12 16z"/></svg>`;
+const empty=(icon,title,sub,action)=>h('div',{class:'empty'},h('div',{class:'big'},icon),h('h3',{},title),sub&&h('p',{class:'muted'},sub),action);
+
+/* ---------- self-contained interactive maps (CSP-safe, no tiles) ---------- */
+const SVGNS='http://www.w3.org/2000/svg';
+function sv(tag,attrs={},...kids){const el=document.createElementNS(SVGNS,tag);for(const[k,v]of Object.entries(attrs||{})){if(v==null||v===false)continue;if(k.startsWith('on')&&typeof v==='function')el.addEventListener(k.slice(2).toLowerCase(),v);else el.setAttribute(k,v);}for(const c of kids.flat()){if(c==null||c===false)continue;el.append(c.nodeType?c:document.createTextNode(String(c)));}return el;}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function seedStr(s){let hh=1779033703;for(let i=0;i<s.length;i++){hh=Math.imul(hh^s.charCodeAt(i),3432918353);hh=hh<<13|hh>>>19;}return hh>>>0;}
+// Wire pan + zoom on an <svg> by transforming an inner <g>.
+function enablePanZoom(container,svg,vp,{min=1,max=5}={}){
+  const st={s:1,x:0,y:0};let dragging=false,px=0,py=0,moved=0;
+  const apply=()=>vp.setAttribute('transform',`translate(${st.x} ${st.y}) scale(${st.s})`);
+  const pt=e=>{const r=svg.getBoundingClientRect();const vb=svg.viewBox.baseVal;return{x:(e.clientX-r.left)/r.width*vb.width,y:(e.clientY-r.top)/r.height*vb.height};};
+  const zoomAt=(f,cx,cy)=>{const ns=Math.max(min,Math.min(max,st.s*f));const k=ns/st.s;st.x=cx-(cx-st.x)*k;st.y=cy-(cy-st.y)*k;st.s=ns;apply();};
+  container.addEventListener('pointerdown',e=>{if(e.target.closest&&e.target.closest('.smap-ctrl'))return;dragging=true;moved=0;px=e.clientX;py=e.clientY;container.classList.add('grabbing');container.setPointerCapture?.(e.pointerId);});
+  container.addEventListener('pointermove',e=>{if(!dragging)return;const r=svg.getBoundingClientRect();const vb=svg.viewBox.baseVal;const dx=(e.clientX-px)/r.width*vb.width,dy=(e.clientY-py)/r.height*vb.height;st.x+=dx;st.y+=dy;moved+=Math.abs(e.clientX-px)+Math.abs(e.clientY-py);px=e.clientX;py=e.clientY;apply();});
+  const end=()=>{dragging=false;container.classList.remove('grabbing');};
+  container.addEventListener('pointerup',end);container.addEventListener('pointerleave',end);
+  container.addEventListener('wheel',e=>{e.preventDefault();const p=pt(e);zoomAt(e.deltaY<0?1.2:1/1.2,p.x,p.y);},{passive:false});
+  return{zoomIn:()=>zoomAt(1.35,400,220),zoomOut:()=>zoomAt(1/1.35,400,220),wasDrag:()=>moved>6};
+}
+function mapControls(pz){return h('div',{class:'smap-ctrl'},h('button',{title:'Zoom in',onClick:e=>{e.stopPropagation();pz.zoomIn();}},'+'),h('button',{title:'Zoom out',onClick:e=>{e.stopPropagation();pz.zoomOut();}},'−'));}
+function pricePin(x,y,label){const g=sv('g',{class:'spin',transform:`translate(${x} ${y})`});const w=18+String(label).length*8.4;g.append(sv('rect',{x:-w/2,y:-15,width:w,height:26,rx:13}),sv('text',{x:0,y:3,'text-anchor':'middle','font-size':13.5},label));return g;}
+
+// Neighborhood-style map for a single listing (procedural streets, price pin).
+function neighborhoodMap(l){
+  const container=h('div',{class:'smap'});
+  const svg=sv('svg',{viewBox:'0 0 800 440',preserveAspectRatio:'xMidYMid slice'});
+  const vp=sv('g',{});svg.append(sv('rect',{x:-400,y:-220,width:1600,height:880,fill:'#e7eef0'}),vp);
+  const rnd=mulberry32(seedStr(l.city+l.state));
+  // parks
+  for(let i=0;i<3;i++){const px=80+rnd()*560,py=60+rnd()*300,pw=60+rnd()*120,ph=50+rnd()*90;vp.append(sv('rect',{x:px,y:py,width:pw,height:ph,rx:10,fill:'#d5e6cf'}));}
+  // a river / coastline
+  const riverY=120+rnd()*200;vp.append(sv('path',{d:`M-50 ${riverY} C 200 ${riverY-60}, 400 ${riverY+80}, 900 ${riverY-30} L 900 900 L -50 900 Z`,fill:'#cfe0ec'}));
+  // road grid (jittered)
+  const roads=sv('g',{});const casings=sv('g',{});
+  for(let i=1;i<8;i++){const y=i*55+ (rnd()*16-8);casings.append(sv('line',{x1:-50,y1:y,x2:850,y2:y,stroke:'#dcdfe2','stroke-width':11}));roads.append(sv('line',{x1:-50,y1:y,x2:850,y2:y,stroke:'#fff','stroke-width':7}));}
+  for(let i=1;i<12;i++){const x=i*70+ (rnd()*16-8);casings.append(sv('line',{x1:x,y1:-50,x2:x,y2:490,stroke:'#dcdfe2','stroke-width':11}));roads.append(sv('line',{x1:x,y1:-50,x2:x,y2:490,stroke:'#fff','stroke-width':7}));}
+  vp.append(casings,roads);
+  // approximate-area circle + center price pin
+  vp.append(sv('circle',{cx:400,cy:220,r:78,fill:'rgba(255,56,92,.12)',stroke:'#ff385c','stroke-width':1.5}));
+  vp.append(pricePin(400,220,'$'+l.fromNightly.toLocaleString()));
+  container.append(svg);
+  const pz=enablePanZoom(container,svg,vp);
+  container.append(mapControls(pz),h('div',{class:'smap-badge'},'Approximate location · exact address after booking'));
+  return container;
+}
+
+// US bounding-box projection for the national results map.
+const US_BBOX={lngMin:-125,lngMax:-66.5,latMin:24.5,latMax:49.5};
+function projUS(lat,lng,W,H,pad=34){const x=pad+((lng-US_BBOX.lngMin)/(US_BBOX.lngMax-US_BBOX.lngMin))*(W-2*pad);const y=pad+((US_BBOX.latMax-lat)/(US_BBOX.latMax-US_BBOX.latMin))*(H-2*pad);return[x,y];}
+const US_OUTLINE=[[-124.6,48.3],[-124.2,43],[-123.8,39.5],[-121.9,36.6],[-120.5,34.5],[-117.3,32.6],[-114.6,32.7],[-111.1,31.3],[-108.2,31.3],[-106.5,31.8],[-103.0,29.0],[-99.2,26.4],[-97.2,25.9],[-96.5,28.7],[-93.8,29.7],[-91.0,29.2],[-89.0,30.2],[-85.5,29.7],[-84.0,30.1],[-82.9,27.8],[-81.0,25.2],[-80.1,26.8],[-80.6,28.5],[-81.4,30.7],[-79.2,33.3],[-75.9,35.2],[-75.5,37.3],[-74.0,39.7],[-71.9,41.3],[-70.0,41.7],[-70.8,43.2],[-67.0,44.7],[-69.2,47.4],[-71.5,45.0],[-76.9,43.5],[-79.0,43.3],[-82.5,41.7],[-83.4,42.0],[-82.5,45.0],[-84.8,46.9],[-88.4,48.3],[-95.2,49.0],[-104.0,49.0],[-114.7,49.0],[-123.3,49.0]];
+function countryMap(listings,{onHover,search=false}={}){
+  const W=800,H=search?600:440;
+  const container=h('div',{class:'smap'+(search?' search':'')});
+  const svg=sv('svg',{viewBox:`0 0 ${W} ${H}`,preserveAspectRatio:'xMidYMid meet'});
+  const vp=sv('g',{});
+  svg.append(sv('rect',{x:-800,y:-600,width:2400,height:1800,fill:'#dfe7ef'}),vp);
+  // graticule
+  for(let i=0;i<=6;i++){const gx=i/6*W;vp.append(sv('line',{x1:gx,y1:0,x2:gx,y2:H,stroke:'#d3dde6','stroke-width':1}));}
+  for(let i=0;i<=4;i++){const gy=i/4*H;vp.append(sv('line',{x1:0,y1:gy,x2:W,y2:gy,stroke:'#d3dde6','stroke-width':1}));}
+  // US landmass
+  const pts=US_OUTLINE.map(([lng,lat])=>projUS(lat,lng,W,H).join(',')).join(' ');
+  vp.append(sv('polygon',{points:pts,fill:'#eef2ec',stroke:'#c7d2c9','stroke-width':1.5,'stroke-linejoin':'round'}));
+  // pins
+  const pinEls={};const withGeo=listings.filter(l=>l.lat&&l.lng);
+  withGeo.forEach((l,idx)=>{const[x,y]=projUS(l.lat,l.lng,W,H);const g=pricePin(x,y,'$'+l.fromNightly.toLocaleString());pinEls[l.id]=g;g.addEventListener('pointerdown',e=>e.stopPropagation());g.addEventListener('mouseenter',()=>{g.classList.add('on');onHover&&onHover(l.id,true);});g.addEventListener('mouseleave',()=>{g.classList.remove('on');onHover&&onHover(l.id,false);});g.addEventListener('click',()=>{if(!pz.wasDrag())showPop(l,x,y);});vp.append(g);});
+  container.append(svg);
+  const popLayer=h('div',{});container.append(popLayer);
+  function showPop(l,x,y){const r=svg.getBoundingClientRect();const vb=svg.viewBox.baseVal;const t=vp.getAttribute('transform')||'';const m=/translate\(([-\d.]+) ([-\d.]+)\) scale\(([-\d.]+)\)/.exec(t);const tx=m?+m[1]:0,ty=m?+m[2]:0,s=m?+m[3]:1;const sx=((x*s+tx)/vb.width)*r.width,sy=((y*s+ty)/vb.height)*r.height;mount(popLayer,h('a',{class:'smap-pop',href:`#/listing/${l.id}`,style:{left:sx+'px',top:sy+'px'},onClick:()=>{popLayer.innerHTML='';}},img(l.photo),h('div',{class:'p'},h('b',{},`${l.city}, ${l.state}`),h('span',{class:'s'},l.title),h('span',{class:'s'},`★ ${l.rating?l.rating.toFixed(2):'New'} · $${l.fromNightly.toLocaleString()}/night`))));}
+  const pz=enablePanZoom(container,svg,vp,{min:1,max:6});
+  container.addEventListener('pointerdown',()=>{if(popLayer.firstChild)popLayer.innerHTML='';});
+  container.append(mapControls(pz),h('div',{class:'smap-badge'},`${withGeo.length} home${withGeo.length>1?'s':''} · drag to pan, scroll to zoom`));
+  container.highlightPin=(id,on)=>{const g=pinEls[id];if(g)g.classList.toggle('on',on);};
+  return container;
+}
+
+/* ---------- router ---------- */
+const routes=[];let notFound=()=>{};
+function route(pattern,handler){const keys=[];const rx=new RegExp('^'+pattern.replace(/:[^/]+/g,m=>{keys.push(m.slice(1));return'([^/]+)';})+'$');routes.push({rx,keys,handler});}
+function parseHash(){const raw=location.hash.slice(1)||'/';const[path,qs]=raw.split('?');return{path,query:Object.fromEntries(new URLSearchParams(qs||''))};}
+const navigate=p=>{location.hash=p;};
+function resolve(){const{path,query}=parseHash();for(const r of routes){const m=path.match(r.rx);if(m){const params={};r.keys.forEach((k,i)=>params[k]=decodeURIComponent(m[i+1]));window.scrollTo({top:0});return r.handler({params,query,path});}}window.scrollTo({top:0});notFound();}
+
+/* ---------- favorites state + shared components ---------- */
+const favState={ids:new Set(),loaded:false};
+async function loadFavorites(){if(!auth.isLoggedIn){favState.ids=new Set();favState.loaded=true;return;}try{const{ids}=await api.favorites();favState.ids=new Set(ids);}catch(e){}favState.loaded=true;}
+function listingCard(l,opts={}){
+  const isFav=favState.ids.has(l.id);
+  const fav=h('button',{class:`fav ${isFav?'on':''}`,title:'Save',html:heartIcon(),onClick:async e=>{e.stopPropagation();if(!auth.isLoggedIn){navigate('/login');return;}try{const{favorited}=await api.toggleFav(l.id);fav.classList.toggle('on',favorited);favorited?favState.ids.add(l.id):favState.ids.delete(l.id);toast(favorited?'Saved to wishlist':'Removed','ok');}catch(err){toast(err.message,'err');}}});
+  const ratingEl=l.rating?h('span',{class:'rating'},'★ ',l.rating.toFixed(2)):h('span',{class:'rating'},h('span',{class:'chip'},'New'));
+  return h('article',{class:'card',onClick:()=>navigate(`/listing/${l.id}${opts.query?'?'+opts.query:''}`)},
+    h('div',{class:'media'},img(l.photo,{alt:l.title}),fav,l.instantBook?h('span',{class:'tag'},'⚡ Instant Book'):null),
+    h('div',{class:'body'},
+      h('h3',{class:'title'},h('span',{},`${l.city}, ${l.state}`),ratingEl),
+      h('div',{class:'sub'},l.title),
+      h('div',{class:'sub muted'},`${l.type} · ${l.bedrooms} bd · ${l.beds} beds · Up to ${l.maxGuests} guests`),
+      h('div',{class:'price tnum'},h('b',{},usd(l.fromNightly)),' ',h('span',{class:'muted'},'night'))));
+}
+function cardGridSkeleton(n=8){return h('div',{class:'grid'},...Array.from({length:n},()=>h('div',{},h('div',{class:'skel',style:{aspectRatio:'20/19'}}),h('div',{class:'skel',style:{height:'14px',width:'70%',marginTop:'12px'}}),h('div',{class:'skel',style:{height:'12px',width:'50%',marginTop:'8px'}}))));}
+function searchWidget(initial={},onSubmit){
+  const whereInput=h('input',{placeholder:'Search destinations',value:initial.city||initial.q||''});
+  const inInput=h('input',{type:'date',value:initial.checkIn||'',min:todayISO()});
+  const outInput=h('input',{type:'date',value:initial.checkOut||'',min:todayISO()});
+  const guestsInput=h('input',{type:'number',min:'1',max:'16',placeholder:'Add guests',value:initial.guests||''});
+  const submit=()=>{const q=new URLSearchParams();if(whereInput.value.trim())q.set('city',whereInput.value.trim());if(inInput.value)q.set('checkIn',inInput.value);if(outInput.value)q.set('checkOut',outInput.value);if(guestsInput.value)q.set('guests',guestsInput.value);onSubmit?onSubmit(q):navigate('/search?'+q.toString());};
+  inInput.addEventListener('change',()=>{if(inInput.value)outInput.min=inInput.value;});
+  [whereInput,guestsInput].forEach(el=>el.addEventListener('keydown',e=>{if(e.key==='Enter')submit();}));
+  const field=(l,n)=>h('div',{class:'field'},h('label',{},l),n);
+  return h('div',{class:'searchbox'},field('Where',whereInput),h('div',{class:'vsep'}),field('Check in',inInput),h('div',{class:'vsep'}),field('Check out',outInput),h('div',{class:'vsep'}),field('Who',guestsInput),h('div',{class:'submit'},h('button',{class:'btn btn-primary',onClick:submit},'🔍 Search')));
+}
+
+/* ---------- header + footer ---------- */
+function userMenu(){
+  const wrap=h('div',{style:{position:'relative'}});let open=false;const pop=h('div',{class:'menu-pop hide'});
+  const rebuild=()=>{const u=auth.user;mount(pop,
+    u?h('div',{style:{padding:'8px 12px 4px'}},h('strong',{},u.name),h('div',{class:'muted',style:{fontSize:'13px'}},u.email)):null,
+    u?h('div',{class:'menu-sep'}):null,
+    u?h('a',{href:'#/trips'},'🧳 My trips'):null,u?h('a',{href:'#/favorites'},'❤️ Wishlists'):null,u?h('a',{href:'#/inbox'},'✉️ Messages'):null,u?h('a',{href:'#/host'},'🏡 Hosting'):null,u?h('a',{href:'#/profile'},'⚙️ Account'):null,u?h('div',{class:'menu-sep'}):null,
+    !u?h('a',{href:'#/signup'},'🧳 Sign up to book'):null,!u?h('a',{href:'#/signup?role=host'},'🏡 Sign up as a host'):null,!u?h('a',{href:'#/login'},'➡️ Log in'):null,!u?h('div',{class:'menu-sep'}):null,
+    h('a',{href:u?'#/host/new':'#/signup?role=host'},'➕ List your property'),
+    u?h('button',{onClick:()=>{auth.clear();navigate('/');toggle(false);}},'🚪 Log out'):null);};
+  const toggle=v=>{open=v??!open;pop.classList.toggle('hide',!open);};
+  const btn=h('button',{class:'usermenu',onClick:e=>{e.stopPropagation();rebuild();toggle();}},h('span',{html:'<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>'}));
+  const avatar=auth.user?img(auth.user.avatar,{class:'avatar',style:{width:'30px',height:'30px'}}):h('span',{class:'avatar',style:{width:'30px',height:'30px',display:'grid',placeItems:'center',background:'#717171',color:'#fff'},html:'<svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>'});
+  btn.append(avatar);wrap.append(btn,pop);document.addEventListener('click',()=>toggle(false));return wrap;
+}
+function renderHeader(){mount($('#app-header'),h('div',{class:'container nav'},
+  h('a',{class:'logo',href:'#/'},h('span',{class:'mark'},'🏡'),h('b',{},'SmartStay'),h('span',{style:{color:'var(--ink)',fontWeight:700}},'USA')),
+  h('nav',{class:'nav-links'},h('a',{class:'nav-link',href:'#/search'},'Explore'),h('a',{class:'nav-link',href:'#/quiz'},'✨ Trip quiz'),h('a',{class:'nav-link',href:auth.isLoggedIn?'#/host':'#/signup?role=host',style:{color:'var(--brand)'}},'🏡 List your property')),
+  userMenu()));}
+function renderFooter(){const col=(t,links)=>h('div',{},h('h4',{},t),...links.map(([x,href])=>h('a',{href:href||'#/search'},x)));mount($('#app-footer'),h('div',{class:'container'},h('div',{class:'footcols'},col('Explore',[['Beach houses','#/search?amenities=Beach access'],['Cabins','#/search?type=Cabin'],['Luxury villas','#/search?type=Villa'],['Pet-friendly','#/search?amenities=Pets allowed']]),col('Hosting',[['List your home','#/host/new'],['Host dashboard','#/host']]),col('Support',[['Help center'],['Cancellation options'],['Safety information']]),col('Company',[['About SmartStay','#/about'],['Newsroom'],['Careers']])),h('div',{class:'footbar spread wrap'},h('span',{},`© ${new Date().getFullYear()} SmartStay USA · Demo marketplace`),h('span',{},'🇺🇸 United States · English (US) · $ USD'))));}
+
+/* ---------- views ---------- */
+const CATEGORIES=[{label:'Villa',q:'type=Villa'},{label:'Cabin',q:'type=Cabin'},{label:'House',q:'type=House'},{label:'Apartment',q:'type=Apartment'},{label:'Ocean view',q:'amenities=Ocean view'},{label:'Pool',q:'amenities=Pool'},{label:'Mountain view',q:'amenities=Mountain view'},{label:'Ski-in/ski-out',q:'amenities=Ski-in/ski-out'},{label:'Beach access',q:'amenities=Beach access'},{label:'Hot tub',q:'amenities=Hot tub'}];
+async function homeView(){
+  const app=$('#app');
+  const prop=(i,t,x)=>h('div',{class:'stack',style:{gap:'6px'}},h('div',{style:{fontSize:'32px'}},i),h('strong',{},t),h('span',{class:'muted',style:{fontSize:'14.5px'}},x));
+  mount(app,
+    h('section',{class:'hero'},h('div',{class:'hero-bg',style:{backgroundImage:`url("${HERO_BG}")`}}),h('div',{class:'hero-inner container'},h('div',{class:'hero-badge'},'✓ No guest booking fees — always cheaper than Airbnb'),h('h1',{},'Find your next stay in America'),h('p',{},'From cliffside villas to mountain cabins — book unforgettable homes for a weekend, a week, or a whole season. And you’ll never pay a booking fee.'),searchWidget({},q=>navigate('/search?'+q.toString())),h('button',{class:'quiz-hero-btn',onClick:openQuiz},'✨ Not sure where to go? Take the 60-second quiz →'))),
+    h('div',{class:'container'},h('div',{class:'catrow'},h('button',{class:'cat active',onClick:()=>navigate('/search')},h('span',{class:'ico'},'🏠'),'All homes'),...CATEGORIES.map(c=>h('button',{class:'cat',onClick:()=>navigate('/search?'+c.q)},h('span',{class:'ico'},CATEGORY_ICONS[c.label]||'🏠'),c.label)))),
+    h('section',{class:'block'},h('div',{class:'container'},h('div',{class:'section-head'},h('div',{},h('div',{class:'eyebrow'},'Featured'),h('h2',{},'Top-rated homes across the USA')),h('a',{class:'btn btn-outline',href:'#/search'},'View all')),h('div',{id:'home-grid'},cardGridSkeleton(8)))),
+    h('section',{class:'block'},h('div',{class:'container'},h('div',{class:'section-head'},h('div',{},h('div',{class:'eyebrow'},'Why SmartStay'),h('h2',{},'Stay your way — a night, a week, or a season'))),h('div',{class:'stat-row'},prop('💸','No booking fees','Guests never pay a service fee — so your total is lower than Airbnb, every time.'),prop('📅','Flexible lengths','Book by the weekend, week, or month with automatic long-stay discounts.'),prop('⚡','Instant Book','Reserve top homes in seconds — no waiting on approvals.'),prop('🛡️','Verified hosts','Every stay is backed by ratings, reviews, and secure checkout.')))),
+    h('section',{class:'block'},h('div',{class:'container'},h('div',{style:{borderRadius:'var(--radius-lg)',overflow:'hidden',position:'relative',minHeight:'300px',display:'flex',alignItems:'center',background:'linear-gradient(120deg,#1a1a1a,#3a1520)'}},h('div',{style:{position:'relative',padding:'48px',color:'#fff',maxWidth:'560px'}},h('h2',{style:{color:'#fff',fontSize:'34px'}},'Your home could be your next big earner'),h('p',{style:{fontSize:'17px',opacity:.95}},'List in minutes, set your own weekend, weekly, and monthly rates, and welcome guests from across the country.'),h('button',{class:'btn btn-primary btn-lg',onClick:()=>navigate(auth.isLoggedIn?'/host/new':'/signup?role=host')},'Start hosting →'))))));
+  if(shouldAutoQuiz())setTimeout(openQuiz,600);
+  try{const{listings}=await api.listings('?sort=rating');mount($('#home-grid'),h('div',{class:'grid'},...listings.slice(0,8).map(listingCard)));}catch(e){mount($('#home-grid'),h('p',{class:'muted'},'Could not load listings.'));}
+}
+
+let META=null;const CATS=['Villa','Cabin','House','Apartment','Condo','Cottage','Loft','Townhouse'];
+const buildQuery=q=>{const u=new URLSearchParams();for(const[k,v]of Object.entries(q))if(v!=null&&v!=='')u.set(k,v);return u.toString();};
+function filterModal(current){
+  const state={...current};const amenities=new Set((current.amenities||'').split(',').filter(Boolean));
+  const priceMin=h('input',{class:'input',type:'number',placeholder:'Min',value:current.minPrice||''});
+  const priceMax=h('input',{class:'input',type:'number',placeholder:'Max',value:current.maxPrice||''});
+  const instant=h('input',{type:'checkbox',checked:current.instantBook==='true'});
+  const checks=(META?.amenities||[]).map(a=>{const cb=h('input',{type:'checkbox',checked:amenities.has(a)});const w=h('label',{class:`check ${amenities.has(a)?'on':''}`},cb,a);cb.addEventListener('change',()=>{cb.checked?amenities.add(a):amenities.delete(a);w.classList.toggle('on',cb.checked);});return w;});
+  const closeM=()=>{$('#modal-root').innerHTML='';document.body.style.overflow='';};
+  const body=h('div',{class:'form'},h('div',{},h('label',{style:{fontWeight:700}},'Price range (per night)'),h('div',{class:'row',style:{marginTop:'8px'}},priceMin,h('span',{},'–'),priceMax)),h('label',{class:'check',style:{marginTop:'6px'}},instant,'⚡ Instant Book only'),h('div',{},h('label',{style:{fontWeight:700}},'Amenities'),h('div',{class:'check-grid',style:{marginTop:'10px'}},...checks)),h('div',{class:'spread',style:{marginTop:'10px'}},h('button',{class:'btn btn-ghost',onClick:()=>{navigate('/search');closeM();}},'Clear all'),h('button',{class:'btn btn-primary',onClick:()=>{const q={...state};q.minPrice=priceMin.value;q.maxPrice=priceMax.value;q.instantBook=instant.checked?'true':'';q.amenities=[...amenities].join(',');navigate('/search?'+buildQuery(q));closeM();}},'Show homes')));
+  openModal('Filters',body);
+}
+async function searchView(){
+  const{query}=parseHash();const app=$('#app');if(!META){try{META=await api.meta();}catch(e){META={amenities:[]};}}
+  const activeType=query.type||'';
+  const catrow=h('div',{class:'catrow'},h('button',{class:`cat ${!activeType?'active':''}`,onClick:()=>{const q={...query};delete q.type;navigate('/search?'+buildQuery(q));}},h('span',{class:'ico'},'🏠'),'All'),...CATS.map(c=>h('button',{class:`cat ${activeType===c?'active':''}`,onClick:()=>navigate('/search?'+buildQuery({...query,type:c}))},h('span',{class:'ico'},CATEGORY_ICONS[c]||'🏠'),c)));
+  const sortSel=h('select',{class:'input',style:{width:'auto'},onChange:e=>navigate('/search?'+buildQuery({...query,sort:e.target.value}))},...[['rating','Top rated'],['price_asc','Price: low to high'],['price_desc','Price: high to low']].map(([v,l])=>h('option',{value:v,selected:(query.sort||'rating')===v},l)));
+  const afc=['minPrice','maxPrice','instantBook'].filter(k=>query[k]).length+(query.amenities?query.amenities.split(',').filter(Boolean).length:0);
+  let smap=null;
+  const split=h('div',{class:'search-split'},h('div',{class:'search-grid-col'},h('div',{id:'search-grid'},cardGridSkeleton(6))),h('div',{class:'search-map-col'},h('div',{id:'search-map-holder'})));
+  const toggleBtn=h('button',{class:'btn btn-primary viewtoggle',onClick:()=>{const mapOn=split.classList.toggle('map-only');toggleBtn.textContent=mapOn?'☰ Show list':'🗺️ Show map';}},'🗺️ Show map');
+  mount(app,h('div',{class:'container',style:{paddingTop:'18px'}},searchWidget(query,q=>navigate('/search?'+q.toString())),catrow,h('div',{class:'spread wrap',style:{margin:'10px 0 20px'}},h('div',{id:'result-count',class:'muted'},'Searching…'),h('div',{class:'row'},h('button',{class:'pill',onClick:()=>filterModal(query)},'⚙️ Filters',afc?h('span',{class:'chip',style:{padding:'1px 8px'}},String(afc)):null),sortSel)),split),toggleBtn);
+  try{const usp=new URLSearchParams();for(const[k,v]of Object.entries(query))if(v)usp.set(k,v);const{listings,count}=await api.listings('?'+usp.toString());const label=[count===1?'1 home':`${count} homes`,query.city?`in ${query.city}`:'across the USA',query.checkIn&&query.checkOut?'· dates available':''].join(' ');mount($('#result-count'),h('strong',{},label));if(!listings.length){split.classList.add('list-only');mount($('#search-grid'),h('div',{class:'empty'},h('div',{class:'big'},'🔍'),h('h3',{},'No homes match your search'),h('p',{class:'muted'},'Try widening your dates, price, or filters.'),h('button',{class:'btn btn-outline',onClick:()=>navigate('/search')},'Clear filters')));}else{const cardQ=new URLSearchParams();if(query.checkIn)cardQ.set('checkIn',query.checkIn);if(query.checkOut)cardQ.set('checkOut',query.checkOut);if(query.guests)cardQ.set('guests',query.guests);const cq=cardQ.toString();mount($('#search-grid'),h('div',{class:'grid'},...listings.map(l=>listingCard(l,{query:cq}))));const cardById={};smap=countryMap(listings,{search:true,onHover:(id,on)=>{const c=cardById[id];if(c)c.style.outline=on?'2px solid var(--ink)':'';}});mount($('#search-map-holder'),smap);document.querySelectorAll('#search-grid .card').forEach((card,i)=>{const l=listings[i];if(l){cardById[l.id]=card;card.addEventListener('mouseenter',()=>smap.highlightPin(l.id,true));card.addEventListener('mouseleave',()=>smap.highlightPin(l.id,false));}});}}catch(e){split.classList.add('list-only');mount($('#search-grid'),h('p',{class:'muted'},'Could not load results: '+e.message));}
+}
+
+function galleryEl(photos){const safe=photos.length?photos:[svgPhoto(200,'🏡','')];const pics=[...safe,...safe,...safe].slice(0,5);return h('div',{class:'gallery'},...pics.map((src,i)=>img(src,{class:i===0?'main':'',onClick:()=>lightbox(safe,i%safe.length)})));}
+function reviewsBlock(l){if(!l.reviews.length)return h('div',{class:'detail-sec'},h('h3',{},'Reviews'),h('p',{class:'muted'},'No reviews yet — be the first to stay here.'));return h('div',{class:'detail-sec'},h('div',{class:'review-summary'},'★',` ${l.rating.toFixed(2)}`,h('span',{class:'dot'}),`${l.reviewCount} review${l.reviewCount>1?'s':''}`),h('div',{class:'reviews-grid'},...l.reviews.slice(0,8).map(r=>h('div',{class:'review'},h('div',{class:'who'},img(r.author?.avatar,{class:'avatar'}),h('div',{},h('strong',{},r.author?.name||'Guest'),h('div',{class:'muted',style:{fontSize:'13px'}},timeAgo(r.createdAt)))),h('div',{class:'stars'},starsStr(r.rating)),h('p',{style:{margin:'6px 0 0'}},r.comment)))));}
+function bookingWidget(l,prefill={}){
+  const card=h('div',{class:'booking-card'});const state={checkIn:'',checkOut:'',guests:1,quote:null};
+  const inInput=h('input',{type:'date',min:todayISO()});const outInput=h('input',{type:'date',min:addDaysISO(todayISO(),1)});
+  const guestsSel=h('select',{},...Array.from({length:l.maxGuests},(_,i)=>h('option',{value:i+1},`${i+1} guest${i?'s':''}`)));
+  const summary=h('div',{id:'quote-summary'});const reserveBtn=h('button',{class:'btn btn-primary btn-block btn-lg',disabled:true},l.instantBook?'⚡ Reserve now':'Request to book');
+  const line=(lab,val,cls='')=>h('div',{class:`price-line ${cls}`},h('span',{},lab),h('span',{class:'tnum'},val));
+  function renderQuote(q){mount(summary,line(h('span',{class:'u'},`${usd(q.avgPerNight)} avg × ${q.nights} night${q.nights>1?'s':''}`),usd(q.base)),q.discount?line(q.discountLabel+` (−${q.discountPct}%)`,'−'+usd(q.discount),'discount'):null,q.cleaningFee?line(h('span',{class:'u'},'Cleaning fee'),usd(q.cleaningFee)):null,line(h('span',{},'SmartStay booking fee'),h('span',{},h('span',{class:'strike'},usd(q.airbnbFee)),' ',h('b',{style:{color:'var(--green)'}},'FREE')),'discount'),line(h('span',{class:'u'},'Taxes'),usd(q.taxes)),line('Total (USD)',usd(q.total),'total'),q.savingsVsAirbnb?h('div',{class:'save-callout'},`🎉 You’re saving ${usd(q.savingsVsAirbnb)} — Airbnb would add a ~14% guest fee. We never charge one.`):null);}
+  async function refresh(){state.checkIn=inInput.value;state.checkOut=outInput.value;state.guests=+guestsSel.value;if(state.checkIn)outInput.min=addDaysISO(state.checkIn,1);if(!state.checkIn||!state.checkOut){mount(summary,h('p',{class:'muted center',style:{padding:'6px 0'}},'Add your dates for an exact total'));reserveBtn.disabled=true;state.quote=null;return;}mount(summary,h('div',{class:'center muted',style:{padding:'10px'}},'Calculating…'));try{const q=await api.quote(l.id,{checkIn:state.checkIn,checkOut:state.checkOut,guests:state.guests});state.quote=q;if(!q.available){mount(summary,h('div',{class:'badge status-cancelled',style:{display:'block',textAlign:'center',padding:'12px'}},'🚫 Not available for these dates'));reserveBtn.disabled=true;return;}renderQuote(q);reserveBtn.disabled=false;}catch(e){mount(summary,h('div',{class:'badge status-cancelled',style:{display:'block',textAlign:'center',padding:'12px'}},e.message));reserveBtn.disabled=true;state.quote=null;}}
+  [inInput,outInput,guestsSel].forEach(el=>el.addEventListener('change',refresh));
+  reserveBtn.addEventListener('click',async()=>{if(!auth.isLoggedIn){toast('Please log in to book','err');navigate('/login');return;}reserveBtn.disabled=true;reserveBtn.textContent='Booking…';try{const{booking}=await api.book({listingId:l.id,checkIn:state.checkIn,checkOut:state.checkOut,guests:state.guests});confirmModal(l,booking);}catch(e){toast(e.message,'err');reserveBtn.disabled=false;reserveBtn.textContent=l.instantBook?'⚡ Reserve now':'Request to book';}});
+  mount(card,h('div',{class:'spread',style:{alignItems:'baseline'}},h('div',{class:'price-lead tnum'},usd(l.fromNightly),h('span',{class:'muted',style:{fontWeight:400,fontSize:'15px'}},' night')),l.rating?h('span',{class:'rating',style:{fontWeight:600}},`★ ${l.rating.toFixed(2)} · ${l.reviewCount}`):h('span',{class:'chip'},'New')),h('div',{class:'booking-fields'},h('div',{class:'r2'},h('div',{class:'bf'},h('label',{},'Check-in'),inInput),h('div',{class:'bf'},h('label',{},'Check-out'),outInput)),h('div',{class:'bf rowtop'},h('label',{},'Guests'),guestsSel)),reserveBtn,h('p',{class:'center',style:{fontSize:'13px',margin:'12px 0 0',color:'var(--green)',fontWeight:700}},'✓ No guest booking fees — ever'),h('p',{class:'muted center',style:{fontSize:'12.5px',margin:'2px 0 0'}},l.instantBook?'You won’t be charged yet':'The host will confirm within 24h'),summary,(l.pricing?.weeklyDiscountPct||l.pricing?.monthlyDiscountPct)?h('div',{class:'demo-note',style:{marginTop:'14px'}},'💡 Long-stay savings: ',l.pricing.weeklyDiscountPct?`${l.pricing.weeklyDiscountPct}% off weekly`:'',l.pricing.weeklyDiscountPct&&l.pricing.monthlyDiscountPct?' · ':'',l.pricing.monthlyDiscountPct?`${l.pricing.monthlyDiscountPct}% off monthly`:''):null);
+  mount(summary,h('p',{class:'muted center',style:{padding:'6px 0'}},'Add your dates for an exact total'));
+  if(prefill.checkIn||prefill.guests){if(prefill.guests)guestsSel.value=String(Math.min(Number(prefill.guests)||1,l.maxGuests));if(prefill.checkIn&&prefill.checkOut){inInput.value=prefill.checkIn;outInput.min=addDaysISO(prefill.checkIn,1);let co=prefill.checkOut;const nights=Math.round((new Date(co)-new Date(prefill.checkIn))/86400000);if((l.minNights||1)>nights)co=addDaysISO(prefill.checkIn,l.minNights);outInput.value=co;refresh();}}
+  return card;
+}
+function confirmModal(l,booking){const body=h('div',{class:'center'},h('div',{style:{fontSize:'54px'}},'🎉'),h('h2',{style:{fontSize:'24px'}},booking.status==='confirmed'?'You’re booked!':'Request sent!'),h('p',{class:'muted'},booking.status==='confirmed'?`Your stay at ${l.title} is confirmed.`:`Your request for ${l.title} was sent to the host.`),h('div',{style:{textAlign:'left',border:'1px solid var(--line)',borderRadius:'14px',padding:'16px',margin:'18px 0'}},h('div',{class:'spread'},h('span',{class:'muted'},'Dates'),h('strong',{},`${fmtDate(booking.checkIn)} – ${fmtDate(booking.checkOut)}`)),h('div',{class:'spread',style:{marginTop:'8px'}},h('span',{class:'muted'},'Guests'),h('strong',{},String(booking.guests))),h('div',{class:'spread',style:{marginTop:'8px'}},h('span',{class:'muted'},'Total'),h('strong',{class:'tnum'},usd(booking.total)))),h('button',{class:'btn btn-primary btn-block',onClick:()=>{$('#modal-root').innerHTML='';document.body.style.overflow='';navigate('/trips');}},'View my trips'));openModal(' ',body);}
+async function listingView({params,query={}}){
+  const app=$('#app');mount(app,h('div',{class:'container'},h('div',{class:'spinner'})));
+  let data;try{data=await api.listing(params.id);}catch(e){mount(app,h('div',{class:'container'},empty('😕','Listing not found',e.message,h('a',{class:'btn btn-primary',href:'#/search'},'Browse homes'))));return;}
+  const l=data.listing;const isFav=favState.ids.has(l.id);
+  const favBtn=h('button',{class:'btn btn-ghost',html:`<span style="display:flex;gap:6px;align-items:center"><span style="width:18px;display:inline-block">${heartIcon()}</span>${isFav?'Saved':'Save'}</span>`,onClick:async()=>{if(!auth.isLoggedIn)return navigate('/login');try{const{favorited}=await api.toggleFav(l.id);favorited?favState.ids.add(l.id):favState.ids.delete(l.id);toast(favorited?'Saved to wishlist':'Removed','ok');listingView({params,query});}catch(e){toast(e.message,'err');}}});
+  mount(app,
+    h('div',{class:'container detail-head'},h('div',{style:{paddingTop:'14px'}},h('a',{class:'btn btn-outline',href:'#/'},'🏡 Home')),h('div',{class:'breadcrumb'},h('a',{href:'#/search'},'Homes'),' / ',h('a',{href:`#/search?city=${encodeURIComponent(l.state)}`},`${l.city}, ${l.state}`),' / ',l.type),h('div',{class:'spread wrap'},h('h1',{class:'detail-title'},l.title),h('div',{class:'row'},h('button',{class:'btn btn-ghost',onClick:()=>{navigator.clipboard?.writeText(location.href);toast('Link copied','ok');}},'🔗 Share'),favBtn)),h('div',{class:'row wrap muted',style:{gap:'4px',marginTop:'2px'}},l.rating?h('strong',{style:{color:'var(--ink)'}},`★ ${l.rating.toFixed(2)}`):h('span',{class:'chip'},'New'),l.reviewCount?h('span',{},` · ${l.reviewCount} reviews · `):h('span',{},' · '),h('strong',{style:{color:'var(--ink)'}},`${l.city}, ${l.state}`)),galleryEl(l.photos)),
+    h('div',{class:'container'},h('div',{class:'detail-grid'},h('div',{},h('div',{class:'detail-sec spread'},h('div',{},h('h2',{style:{fontSize:'22px'}},`${l.type} hosted by ${l.host?.name||'a SmartStay host'}`),h('div',{class:'muted'},`${l.maxGuests} guests · ${l.bedrooms} bedrooms · ${l.beds} beds · ${l.bathrooms} baths`)),img(l.host?.avatar,{class:'avatar',style:{width:'56px',height:'56px'}})),h('div',{class:'detail-sec'},h('p',{style:{fontSize:'16px',color:'var(--ink-2)'}},l.description)),h('div',{class:'detail-sec'},h('h3',{},'What this place offers'),h('div',{class:'amenity-grid'},...l.amenities.map(a=>h('div',{class:'amenity'},h('span',{class:'ico'},AMENITY_ICONS[a]||'✓'),a)))),h('div',{class:'detail-sec'},h('h3',{},'Where you’ll be'),h('p',{class:'muted',style:{marginTop:'-4px'}},`${l.city}, ${l.state}`),neighborhoodMap(l)),reviewsBlock(l)),h('div',{},bookingWidget(l,query)))));
+}
+
+function requireAuth(){if(!auth.isLoggedIn){navigate('/login');return false;}return true;}
+const statusBadge=s=>h('span',{class:`badge status-${s}`},s[0].toUpperCase()+s.slice(1));
+function reviewModal(booking,onDone){let rating=5;const row=h('div',{style:{fontSize:'34px',cursor:'pointer',color:'var(--gold)',letterSpacing:'4px'}});const draw=()=>mount(row,...[1,2,3,4,5].map(n=>h('span',{onClick:()=>{rating=n;draw();}},n<=rating?'★':'☆')));draw();const comment=h('textarea',{placeholder:'Tell other guests about your stay…'});const body=h('div',{class:'form'},h('div',{class:'center'},row),comment,h('button',{class:'btn btn-primary btn-block',onClick:async()=>{try{await api.post(`/listings/${booking.listingId}/reviews`,{rating,comment:comment.value,bookingId:booking.id});toast('Thanks for your review! ⭐','ok');$('#modal-root').innerHTML='';document.body.style.overflow='';onDone&&onDone();}catch(e){toast(e.message,'err');}}},'Submit review'));openModal(`Review · ${booking.listing?.title||'your stay'}`,body);}
+function tripRow(b,reload){const l=b.listing;return h('div',{class:'list-row'},l?img(l.photo,{class:'thumb',onClick:()=>navigate(`/listing/${l.id}`)}):null,h('div',{class:'grow'},h('div',{class:'spread'},h('strong',{},l?.title||'Listing removed'),statusBadge(b.status)),h('div',{class:'muted'},l?`${l.city}, ${l.state}`:'',' · ',`${b.nights} nights · ${b.guests} guests`),h('div',{class:'muted'},`📅 ${fmtRange(b.checkIn,b.checkOut)}`),h('div',{style:{marginTop:'6px'}},h('strong',{class:'tnum'},usd(b.total)),h('span',{class:'muted'},' total'))),h('div',{class:'stack',style:{gap:'8px'}},b.isPast&&!b.reviewed&&l?h('button',{class:'btn btn-outline',onClick:()=>reviewModal(b,reload)},'⭐ Review'):null,b.reviewed?h('span',{class:'chip'},'✓ Reviewed'):null,!b.isPast&&b.status!=='cancelled'?h('button',{class:'btn btn-ghost',onClick:async()=>{if(!confirm('Cancel this booking?'))return;try{await api.post(`/bookings/${b.id}/cancel`);toast('Booking cancelled','ok');reload();}catch(e){toast(e.message,'err');}}},'Cancel'):null));}
+async function tripsView(){if(!requireAuth())return;const app=$('#app');mount(app,h('div',{class:'container',style:{paddingTop:'30px'}},h('h1',{style:{fontSize:'30px'}},'Your trips'),h('div',{class:'spinner'})));const reload=()=>tripsView();try{const{bookings}=await api.myBookings();const up=bookings.filter(b=>!b.isPast&&b.status!=='cancelled');const past=bookings.filter(b=>b.isPast||b.status==='cancelled');mount(app,h('div',{class:'container',style:{paddingTop:'30px',paddingBottom:'40px'}},h('h1',{style:{fontSize:'30px'}},'Your trips'),bookings.length===0?empty('🧳','No trips yet','Time to dust off your bags and plan your next adventure.',h('a',{class:'btn btn-primary',href:'#/search'},'Start exploring')):h('div',{},up.length?h('div',{},h('h3',{style:{marginTop:'20px'}},'Upcoming'),h('div',{class:'stack',style:{gap:'14px'}},...up.map(b=>tripRow(b,reload)))):null,past.length?h('div',{},h('h3',{style:{marginTop:'28px'}},'Where you’ve been'),h('div',{class:'stack',style:{gap:'14px'}},...past.map(b=>tripRow(b,reload)))):null)));}catch(e){mount(app,h('div',{class:'container'},h('p',{class:'muted'},e.message)));}}
+async function favoritesView(){if(!requireAuth())return;const app=$('#app');mount(app,h('div',{class:'container',style:{paddingTop:'30px'}},h('h1',{style:{fontSize:'30px'}},'Wishlists'),h('div',{class:'spinner'})));try{const{listings}=await api.favorites();mount(app,h('div',{class:'container',style:{paddingTop:'30px',paddingBottom:'40px'}},h('h1',{style:{fontSize:'30px'}},'Wishlists'),listings.length?h('div',{class:'grid',style:{marginTop:'20px'}},...listings.map(listingCard)):empty('❤️','No saved homes yet','Tap the heart on any home to save it here.',h('a',{class:'btn btn-primary',href:'#/search'},'Find homes'))));}catch(e){mount(app,h('div',{class:'container'},h('p',{class:'muted'},e.message)));}}
+async function inboxView(){if(!requireAuth())return;const app=$('#app');mount(app,h('div',{class:'container',style:{paddingTop:'30px',paddingBottom:'40px'}},h('h1',{style:{fontSize:'30px'}},'Messages'),empty('✉️','No messages yet','Once you book or host a stay, your conversations show up here.',h('a',{class:'btn btn-primary',href:'#/search'},'Browse homes'))));}
+function profileView(){if(!requireAuth())return;const app=$('#app');const u=auth.user;const name=h('input',{class:'input',value:u.name});const bio=h('textarea',{class:'input',placeholder:'Tell guests a little about yourself…'});bio.value=u.bio||'';const isHost=h('input',{type:'checkbox',checked:u.isHost});mount(app,h('div',{class:'container',style:{paddingTop:'30px',paddingBottom:'40px',maxWidth:'620px'}},h('h1',{style:{fontSize:'30px'}},'Account'),h('div',{class:'row',style:{margin:'18px 0'}},img(u.avatar,{class:'avatar',style:{width:'76px',height:'76px'}}),h('div',{},h('strong',{style:{fontSize:'18px'}},u.name),h('div',{class:'muted'},u.email))),h('div',{class:'form'},h('div',{class:'field-group'},h('label',{},'Name'),name),h('div',{class:'field-group'},h('label',{},'About'),bio),h('label',{class:'check'},isHost,'🏡 Enable hosting'),h('button',{class:'btn btn-primary',style:{alignSelf:'flex-start'},onClick:async()=>{try{const{user}=await api.patch('/auth/me',{name:name.value,bio:bio.value,isHost:isHost.checked});auth.update(user);toast('Profile saved','ok');}catch(e){toast(e.message,'err');}}},'Save changes'),h('div',{class:'menu-sep'}),h('button',{class:'btn btn-outline',style:{alignSelf:'flex-start'},onClick:()=>{auth.clear();navigate('/');}},'Log out'))));}
+
+const PRESET_PHOTOS=PRESET_REAL;
+async function hostView(){if(!requireAuth())return;const app=$('#app');mount(app,h('div',{class:'container',style:{paddingTop:'30px'}},h('h1',{style:{fontSize:'30px'}},'Hosting'),h('div',{class:'spinner'})));let listings=[],bookings=[];try{({listings}=await api.hostListings());({bookings}=await api.hostBookings());}catch(e){mount(app,h('div',{class:'container'},h('p',{class:'muted'},e.message)));return;}const grossTotal=listings.reduce((s,l)=>s+(l.gross||0),0);const feeTotal=listings.reduce((s,l)=>s+(l.platformFee||0),0);const payoutTotal=listings.reduce((s,l)=>s+(l.payout||0),0);const totalBookings=bookings.filter(b=>b.status!=='cancelled').length;const pending=bookings.filter(b=>b.status==='pending');const reload=()=>hostView();
+  const listingRow=l=>h('div',{class:'list-row'},img(l.photo,{class:'thumb',onClick:()=>navigate(`/listing/${l.id}`)}),h('div',{class:'grow'},h('strong',{},l.title),h('div',{class:'muted'},`${l.city}, ${l.state} · ${usd(l.fromNightly)}/night`),h('div',{class:'muted',style:{fontSize:'13.5px'}},`${l.bookingCount} bookings · ${usd(l.payout||0)} payout · ${l.rating?'★ '+l.rating.toFixed(1):'No reviews'}`)),h('div',{class:'row'},h('button',{class:'btn btn-outline',onClick:()=>navigate(`/host/edit/${l.id}`)},'Edit'),h('button',{class:'btn btn-ghost',onClick:async()=>{if(!confirm(`Delete "${l.title}"?`))return;try{await api.del(`/host/listings/${l.id}`);toast('Listing deleted','ok');reload();}catch(e){toast(e.message,'err');}}},'🗑️')));
+  const bookingRow=(b,actionable)=>h('div',{class:'list-row'},b.listing?img(b.listing.photo,{class:'thumb'}):null,h('div',{class:'grow'},h('div',{class:'spread'},h('strong',{},b.listing?.title||'Listing'),h('span',{class:`badge status-${b.status}`},b.status)),h('div',{class:'muted'},`${b.guest?.name||'Guest'} · ${b.guests} guests · ${fmtRange(b.checkIn,b.checkOut)}`),h('div',{},h('strong',{class:'tnum',style:{color:'var(--green)'}},usd(b.payout||0)),h('span',{class:'muted'},` payout · ${usd(b.total)} gross`))),actionable&&b.status==='pending'?h('div',{class:'row'},h('button',{class:'btn btn-primary',onClick:async()=>{try{await api.post(`/bookings/${b.id}/confirm`);toast('Booking confirmed','ok');reload();}catch(e){toast(e.message,'err');}}},'Confirm'),h('button',{class:'btn btn-ghost',onClick:async()=>{try{await api.post(`/bookings/${b.id}/cancel`);toast('Declined','ok');reload();}catch(e){toast(e.message,'err');}}},'Decline')):null);
+  mount(app,h('div',{class:'container',style:{paddingTop:'30px',paddingBottom:'50px'}},h('div',{class:'spread wrap'},h('h1',{style:{fontSize:'30px'}},`Welcome back, ${auth.user.name.split(' ')[0]}`),h('button',{class:'btn btn-primary',onClick:()=>navigate('/host/new')},'➕ Add a home')),h('div',{class:'stat-row'},h('div',{class:'stat'},h('div',{class:'n'},String(listings.length)),h('div',{class:'l'},'Active listings')),h('div',{class:'stat'},h('div',{class:'n'},String(totalBookings)),h('div',{class:'l'},'Total bookings')),h('div',{class:'stat'},h('div',{class:'n tnum',style:{color:'var(--green)'}},usd(payoutTotal)),h('div',{class:'l'},'Your payout (80%)')),h('div',{class:'stat'},h('div',{class:'n'},String(pending.length)),h('div',{class:'l'},'Pending requests'))),h('div',{class:'demo-note',style:{marginBottom:'24px',display:'flex',gap:'16px',flexWrap:'wrap',justifyContent:'space-between',alignItems:'center'}},h('span',{},'💸 SmartStay keeps 20% of gross booking revenue — you keep 80%.'),h('span',{style:{fontWeight:600}},`Gross ${usd(grossTotal)} · SmartStay fee ${usd(feeTotal)} · Your payout ${usd(payoutTotal)}`)),pending.length?h('div',{},h('h3',{},'⏳ Requests needing your review'),h('div',{class:'stack',style:{gap:'12px',marginBottom:'28px'}},...pending.map(b=>bookingRow(b,true)))):null,h('h3',{},'Your listings'),listings.length?h('div',{class:'stack',style:{gap:'14px'}},...listings.map(listingRow)):empty('🏡','No listings yet','List your first home and start earning.',h('button',{class:'btn btn-primary',onClick:()=>navigate('/host/new')},'Get started')),bookings.length?h('div',{},h('h3',{style:{marginTop:'34px'}},'All bookings'),h('div',{class:'stack',style:{gap:'12px'}},...bookings.map(b=>bookingRow(b,false)))):null));
+}
+async function hostEditView({params}){if(!requireAuth())return;const app=$('#app');const editing=!!params?.id;if(!META){try{META=await api.meta();}catch(e){META={amenities:[],types:[]};}}let existing=null;if(editing){mount(app,h('div',{class:'container'},h('div',{class:'spinner'})));try{const{listings}=await api.hostListings();existing=listings.find(l=>l.id===params.id);}catch(e){toast(e.message,'err');}if(!existing){mount(app,h('div',{class:'container'},empty('😕','Listing not found','',h('a',{class:'btn btn-primary',href:'#/host'},'Back to hosting'))));return;}}
+  const D=existing||{},P=D.pricing||{};const selectedPhotos=new Set(D.photos||[]);const selectedAmenities=new Set(D.amenities||[]);
+  const f={title:h('input',{class:'input',placeholder:'Charming beach cottage with ocean views',value:D.title||''}),description:h('textarea',{class:'input',placeholder:'Describe what makes your place special…'}),type:h('select',{class:'input'},...(META.types||['House']).map(t=>h('option',{value:t,selected:D.type===t},t))),city:h('input',{class:'input',placeholder:'Austin',value:D.city||''}),state:h('input',{class:'input',placeholder:'TX',maxlength:'2',value:D.state||''}),bedrooms:h('input',{class:'input',type:'number',min:'0',value:D.bedrooms??1}),beds:h('input',{class:'input',type:'number',min:'1',value:D.beds??1}),bathrooms:h('input',{class:'input',type:'number',min:'1',value:D.bathrooms??1}),maxGuests:h('input',{class:'input',type:'number',min:'1',value:D.maxGuests??2}),nightly:h('input',{class:'input',type:'number',min:'10',value:P.nightly??150}),weekendNightly:h('input',{class:'input',type:'number',min:'0',placeholder:'Optional',value:P.weekendNightly||''}),weeklyDiscountPct:h('input',{class:'input',type:'number',min:'0',max:'60',value:P.weeklyDiscountPct??10}),monthlyDiscountPct:h('input',{class:'input',type:'number',min:'0',max:'70',value:P.monthlyDiscountPct??25}),cleaningFee:h('input',{class:'input',type:'number',min:'0',value:P.cleaningFee??75}),minNights:h('input',{class:'input',type:'number',min:'1',value:D.minNights??2}),instantBook:h('input',{type:'checkbox',checked:D.instantBook??true})};f.description.value=D.description||'';
+  const photoGrid=h('div',{class:'check-grid',style:{gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))'}},...PRESET_PHOTOS.map(url=>{const on=selectedPhotos.has(url);const tile=h('div',{style:{position:'relative',cursor:'pointer',borderRadius:'10px',overflow:'hidden',aspectRatio:'4/3',outline:on?'3px solid var(--brand)':'1px solid var(--line-2)'}},img(url),h('span',{class:'photo-check',style:{position:'absolute',top:'6px',right:'6px',width:'22px',height:'22px',borderRadius:'50%',background:on?'var(--brand)':'rgba(255,255,255,.85)',color:'#fff',display:'grid',placeItems:'center',fontSize:'13px'}},on?'✓':''));tile.addEventListener('click',()=>{selectedPhotos.has(url)?selectedPhotos.delete(url):selectedPhotos.add(url);const now=selectedPhotos.has(url);tile.style.outline=now?'3px solid var(--brand)':'1px solid var(--line-2)';const chk=tile.querySelector('.photo-check');chk.style.background=now?'var(--brand)':'rgba(255,255,255,.85)';chk.textContent=now?'✓':'';});return tile;}));
+  const amenityGrid=h('div',{class:'check-grid'},...(META.amenities||[]).map(a=>{const cb=h('input',{type:'checkbox',checked:selectedAmenities.has(a)});const w=h('label',{class:`check ${selectedAmenities.has(a)?'on':''}`},cb,a);cb.addEventListener('change',()=>{cb.checked?selectedAmenities.add(a):selectedAmenities.delete(a);w.classList.toggle('on',cb.checked);});return w;}));
+  const fg=(l,n,hint)=>h('div',{class:'field-group'},h('label',{},l),n,hint?h('small',{class:'muted'},hint):null);
+  const save=async()=>{const payload={title:f.title.value,description:f.description.value,type:f.type.value,city:f.city.value,state:f.state.value,bedrooms:+f.bedrooms.value,beds:+f.beds.value,bathrooms:+f.bathrooms.value,maxGuests:+f.maxGuests.value,amenities:[...selectedAmenities],photos:[...selectedPhotos],pricing:{nightly:+f.nightly.value,weekendNightly:+f.weekendNightly.value||0,weeklyDiscountPct:+f.weeklyDiscountPct.value,monthlyDiscountPct:+f.monthlyDiscountPct.value,cleaningFee:+f.cleaningFee.value},minNights:+f.minNights.value,instantBook:f.instantBook.checked};if(!payload.title||!payload.city||!payload.description){toast('Title, city and description are required','err');return;}if(!payload.photos.length){toast('Add at least one photo of your place','err');return;}try{if(editing){await api.put(`/host/listings/${params.id}`,payload);toast('Listing updated','ok');}else{const{listing}=await api.post('/host/listings',payload);auth.update({...auth.user,isHost:true});toast('Your home is live! 🎉','ok');navigate(`/listing/${listing.id}`);return;}navigate('/host');}catch(e){toast(e.message,'err');}};
+  const netHint=h('div',{class:'demo-note',style:{marginTop:'10px'}});
+  const updateNet=()=>{const nightly=+f.nightly.value||0;const weekend=+f.weekendNightly.value||nightly;mount(netHint,`💸 SmartStay keeps 20% of gross booking revenue — you keep 80%. That's about ${usd(Math.round(nightly*0.8))}/night${weekend!==nightly?` (${usd(Math.round(weekend*0.8))}/weekend night)`:''} in your pocket, plus your cleaning fee.`);};
+  f.nightly.addEventListener('input',updateNet);f.weekendNightly.addEventListener('input',updateNet);updateNet();
+  mount(app,h('div',{class:'container',style:{maxWidth:'820px',paddingTop:'30px',paddingBottom:'50px'}},h('div',{class:'breadcrumb'},h('a',{href:'#/host'},'Hosting'),' / ',editing?'Edit listing':'New listing'),h('h1',{style:{fontSize:'30px'}},editing?'Edit your listing':'List your home'),h('p',{class:'muted'},'Set your own rates for weekends, weeks, and months — SmartStay handles the rest.'),h('div',{class:'form',style:{marginTop:'20px'}},h('h3',{},'① The basics'),fg('Listing title',f.title),fg('Description',f.description),h('div',{class:'row wrap',style:{gap:'14px'}},h('div',{class:'grow'},fg('Home type',f.type)),h('div',{class:'grow'},fg('City',f.city)),h('div',{style:{width:'90px'}},fg('State',f.state))),h('div',{class:'row wrap',style:{gap:'14px'}},h('div',{class:'grow'},fg('Bedrooms',f.bedrooms)),h('div',{class:'grow'},fg('Beds',f.beds)),h('div',{class:'grow'},fg('Bathrooms',f.bathrooms)),h('div',{class:'grow'},fg('Max guests',f.maxGuests))),h('h3',{style:{marginTop:'16px'}},'② Photos',h('span',{style:{color:'var(--brand)',fontWeight:700,fontSize:'15px'}},' *required'),h('span',{class:'muted',style:{fontWeight:400,fontSize:'15px'}},' — every home needs at least one photo')),photoGrid,h('h3',{style:{marginTop:'16px'}},'③ Amenities'),amenityGrid,h('h3',{style:{marginTop:'16px'}},'④ Pricing'),h('div',{class:'row wrap',style:{gap:'14px'}},h('div',{class:'grow'},fg('Nightly rate ($)',f.nightly)),h('div',{class:'grow'},fg('Weekend rate ($)',f.weekendNightly,'Fri & Sat nights'))),h('div',{class:'row wrap',style:{gap:'14px'}},h('div',{class:'grow'},fg('Weekly discount (%)',f.weeklyDiscountPct,'7+ nights')),h('div',{class:'grow'},fg('Monthly discount (%)',f.monthlyDiscountPct,'28+ nights')),h('div',{class:'grow'},fg('Cleaning fee ($)',f.cleaningFee))),netHint,h('div',{class:'row wrap',style:{gap:'14px',alignItems:'end'}},h('div',{style:{width:'160px'}},fg('Minimum nights',f.minNights)),h('label',{class:'check',style:{marginBottom:'2px'}},f.instantBook,'⚡ Enable Instant Book')),h('div',{class:'row',style:{marginTop:'20px'}},h('button',{class:'btn btn-primary btn-lg',onClick:save},editing?'Save changes':'Publish listing'),h('button',{class:'btn btn-ghost',onClick:()=>navigate(editing?'/host':'/')},'Cancel')))));
+}
+
+async function aboutView(){
+  const app=$('#app');
+  const stat=(id,label)=>h('div',{class:'stat'},h('div',{class:'n',id},'—'),h('div',{class:'l'},label));
+  const value=(icon,title,text)=>h('div',{class:'stack',style:{gap:'6px'}},h('div',{style:{fontSize:'30px'}},icon),h('strong',{},title),h('span',{class:'muted',style:{fontSize:'14.5px'}},text));
+  mount(app,
+    h('section',{class:'hero',style:{minHeight:'380px'}},h('div',{class:'hero-bg',style:{backgroundImage:`url("${svgPhoto(28,'🏡','')}")`}}),h('div',{class:'hero-inner container'},h('div',{class:'eyebrow',style:{color:'#fff',opacity:.9}},'About us'),h('h1',{style:{maxWidth:'760px'}},'Stays that feel like they were made for you'))),
+    h('section',{class:'block'},h('div',{class:'container',style:{maxWidth:'760px'}},
+      h('p',{style:{fontSize:'20px',lineHeight:'1.7',color:'var(--ink-2)'}},'SmartStay USA was born from a simple belief: finding a place to stay should feel as good as the trip itself. We connect travelers with a hand-picked collection of homes across the country — cliffside villas, mountain cabins, downtown lofts, and beach cottages — and let you book them your way, whether that’s a spontaneous weekend, a working week, or a whole season. Every host sets their own nightly, weekly, and monthly rates, so longer stays come with real savings, and every home is backed by verified reviews and secure checkout. And unlike the other guys, we never charge guests a booking fee — no hidden math, no surprises, just a lower total than you’d pay on Airbnb, plus an interactive map and a place that feels like yours the moment you walk in. For hosts, SmartStay is the simplest way to turn a home into income, with full control over pricing, availability, and who stays. We’re building the most trusted, human, and genuinely beautiful way to travel across America — one great stay at a time.'),
+      h('div',{class:'stat-row',style:{marginTop:'34px'}},stat('about-homes','Homes to book'),stat('about-cities','US destinations'),stat('about-flex','Ways to stay')))),
+    h('section',{class:'block',style:{background:'var(--bg-2)'}},h('div',{class:'container'},h('div',{class:'section-head'},h('div',{},h('div',{class:'eyebrow'},'What we stand for'),h('h2',{},'The SmartStay promise'))),h('div',{class:'stat-row'},value('💸','No booking fees','Guests never pay a service fee — your total is lower than Airbnb, every single time.'),value('📅','Book your way','Weekend, week, or month — with automatic long-stay discounts baked in.'),value('🛡️','Trust built in','Verified hosts, real guest reviews, and secure checkout on every stay.'),value('🗺️','Truly local','Interactive maps and honest descriptions so you always know where you’ll be.')))),
+    h('section',{class:'block'},h('div',{class:'container center',style:{maxWidth:'640px'}},h('h2',{style:{fontSize:'30px'}},'Your next stay is waiting'),h('p',{class:'muted',style:{fontSize:'17px'}},'Explore beautiful homes across the USA, or list your own and start earning.'),h('div',{class:'row',style:{justifyContent:'center',marginTop:'18px'}},h('button',{class:'btn btn-primary btn-lg',onClick:()=>navigate('/search')},'Explore stays'),h('button',{class:'btn btn-outline btn-lg',onClick:()=>navigate(auth.isLoggedIn?'/host/new':'/signup?role=host')},'Become a host')))));
+  try{const[{count},{cities}]=await Promise.all([api.listings(),api.meta()]);const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};set('about-homes',String(count));set('about-cities',String((cities||[]).length));set('about-flex','3');}catch(e){}
+}
+
+/* ---------- Trip Matcher quiz ---------- */
+const QUIZ_SEEN='ss_quiz_seen';
+const shouldAutoQuiz=()=>!localStorage.getItem(QUIZ_SEEN);
+const QUIZ=[
+  {key:'vibe',q:'What kind of getaway are you dreaming of?',options:[{label:'Beach & ocean',ico:'🏖️',amenities:['Beach access','Ocean view']},{label:'Mountains & snow',ico:'⛰️',amenities:['Mountain view','Ski-in/ski-out']},{label:'City & culture',ico:'🌆',types:['Apartment','Loft','Condo']},{label:'Desert & sun',ico:'🏜️',amenities:['Pool','Hot tub']},{label:'Lakes & nature',ico:'🌲',amenities:['Lake access','Fireplace']},{label:'Surprise me',ico:'🎲'}]},
+  {key:'group',q:'Who’s coming along?',options:[{label:'Just me',ico:'🧍',guests:1},{label:'Two of us',ico:'💑',guests:2},{label:'Family',ico:'👨‍👩‍👧',guests:5},{label:'Big group',ico:'🥳',guests:8}]},
+  {key:'length',q:'How long will you stay?',options:[{label:'A weekend',ico:'🗓️',sub:'2–3 nights',nights:2},{label:'A week',ico:'📅',sub:'weekly discounts kick in',nights:7},{label:'A month or more',ico:'🧳',sub:'biggest long-stay savings',nights:30}]},
+  {key:'budget',q:'What’s your nightly budget?',options:[{label:'Under $250',ico:'💵',max:250},{label:'$250 – $500',ico:'💸',min:250,max:500},{label:'$500 – $1,000',ico:'💰',min:500,max:1000},{label:'Sky’s the limit',ico:'🤑'}]},
+  {key:'must',q:'Pick your one must-have',options:[{label:'A pool',ico:'🏊',amenity:'Pool'},{label:'A hot tub',ico:'♨️',amenity:'Hot tub'},{label:'Pet-friendly',ico:'🐾',amenity:'Pets allowed'},{label:'A workspace',ico:'💻',amenity:'Workspace'},{label:'Instant Book',ico:'⚡',instantBook:true},{label:'No dealbreakers',ico:'✨'}]},
+  {key:'when',q:'When are you going?',dynamic:'months'},
+];
+function monthOptions(){const out=[];const now=new Date();for(let i=0;i<5;i++){const d=new Date(now.getFullYear(),now.getMonth()+i,1);out.push({label:d.toLocaleDateString('en-US',{month:'long',year:'numeric'}),ico:'📅',year:d.getFullYear(),month:d.getMonth()+1});}out.push({label:'I’m flexible',ico:'🤷',flexible:true});return out;}
+function computeDates(a){const w=a.when;if(!w||w.flexible)return null;const nights=Math.min(a.length?.nights||3,27);const now=new Date();const ci=(w.year===now.getFullYear()&&w.month===now.getMonth()+1)?addDaysISO(todayISO(),7):`${w.year}-${String(w.month).padStart(2,'0')}-08`;return{ci,co:addDaysISO(ci,nights)};}
+function scoreListing(l,a){let s=0;if(a.vibe){if(a.vibe.amenities&&a.vibe.amenities.some(x=>l.amenities.includes(x)))s+=3;if(a.vibe.types&&a.vibe.types.includes(l.type))s+=3;}if(a.group?.guests){s+=l.maxGuests>=a.group.guests?2:-3;}if(a.budget){const p=l.fromNightly,min=a.budget.min||0,max=a.budget.max||Infinity;s+=(p>=min&&p<=max)?2:(p>max?-2:0);}if(a.must){if(a.must.amenity&&l.amenities.includes(a.must.amenity))s+=3;if(a.must.instantBook&&l.instantBook)s+=3;}if(a.length?.nights){const n=a.length.nights;if((l.minNights||1)>n)s-=2.5;if(n>=28&&l.monthlyDiscountPct)s+=1.5;else if(n>=7&&l.weeklyDiscountPct)s+=1;}if(l.instantBook)s+=0.5;s+=(l.rating?l.rating:4.0)*0.4;return s;}
+function matchReasons(l,a){const r=[];if(a.vibe?.amenities){const m=a.vibe.amenities.find(x=>l.amenities.includes(x));if(m)r.push(m);}else if(a.vibe?.types?.includes(l.type))r.push(`${l.type} in the heart of the city`);if(a.group?.guests&&l.maxGuests>=a.group.guests)r.push(`Sleeps ${l.maxGuests}`);if(a.must?.amenity&&l.amenities.includes(a.must.amenity))r.push(a.must.amenity);if(a.must?.instantBook&&l.instantBook)r.push('⚡ Instant Book');if(a.length?.nights>=28&&l.monthlyDiscountPct)r.push(`${l.monthlyDiscountPct}% off monthly`);else if(a.length?.nights>=7&&l.weeklyDiscountPct)r.push(`${l.weeklyDiscountPct}% off weekly`);if(l.rating&&l.rating>=4.7)r.push(`★ ${l.rating.toFixed(2)} top-rated`);if(a.budget&&l.fromNightly<=(a.budget.max||Infinity))r.push(`$${l.fromNightly.toLocaleString()}/night`);return r.slice(0,4);}
+function quizQuery(a){const q=new URLSearchParams();if(a.group?.guests)q.set('guests',a.group.guests);if(a.budget?.min)q.set('minPrice',a.budget.min);if(a.budget?.max)q.set('maxPrice',a.budget.max);if(a.must?.amenity)q.set('amenities',a.must.amenity);if(a.must?.instantBook)q.set('instantBook','true');const dates=computeDates(a);if(dates){q.set('checkIn',dates.ci);q.set('checkOut',dates.co);}return q.toString();}
+function listingQuery(a){const q=new URLSearchParams();const dates=computeDates(a);if(dates){q.set('checkIn',dates.ci);q.set('checkOut',dates.co);}if(a.group?.guests)q.set('guests',a.group.guests);return q.toString();}
+function openQuiz(){
+  const root=$('#modal-root');const answers={};let step=0;
+  const overlay=h('div',{class:'quiz-overlay'});document.body.style.overflow='hidden';mount(root,overlay);
+  const close=()=>{localStorage.setItem(QUIZ_SEEN,'1');root.innerHTML='';document.body.style.overflow='';};
+  const frame=(children)=>{const pct=Math.round((step/QUIZ.length)*100);return mount(overlay,h('div',{class:'quiz-inner'},h('div',{class:'quiz-top'},h('div',{class:'logo',style:{fontSize:'18px'}},h('span',{},'🏡'),h('b',{},'SmartStay'),h('span',{style:{color:'var(--ink)',fontWeight:700}},' Trip Matcher')),h('button',{class:'iconbtn',title:'Skip',onClick:close},'✕')),h('div',{class:'quiz-bar'},h('span',{style:{width:pct+'%'}})),children));};
+  const isSelected=(Q,opt)=>{if(answers[Q.key]===opt)return true;if(Q.key==='when'&&answers.when)return (opt.flexible&&answers.when.flexible)||(answers.when.year===opt.year&&answers.when.month===opt.month);return false;};
+  function renderQ(){const Q=QUIZ[step];const opts=Q.dynamic==='months'?monthOptions():Q.options;frame(h('div',{},h('div',{class:'muted',style:{fontWeight:700,fontSize:'13px',letterSpacing:'.05em'}},`QUESTION ${step+1} OF ${QUIZ.length}`),h('h2',{class:'quiz-q'},Q.q),h('div',{class:'quiz-opts'},...opts.map(opt=>h('button',{class:'quiz-opt'+(isSelected(Q,opt)?' on':''),onClick:()=>{answers[Q.key]=opt;step<QUIZ.length-1?(step++,renderQ()):finish();}},h('span',{class:'ico'},opt.ico),h('span',{},opt.label,opt.sub?h('small',{},opt.sub):null)))),h('div',{class:'row',style:{marginTop:'26px',justifyContent:'space-between'}},step>0?h('button',{class:'btn btn-ghost',onClick:()=>{step--;renderQ();}},'← Back'):h('span',{}),h('button',{class:'btn btn-ghost muted',onClick:close},'Skip the quiz'))));}
+  async function finish(){frame(h('div',{class:'center',style:{paddingTop:'40px'}},h('h2',{class:'quiz-q'},'Finding your perfect stays…'),h('div',{class:'spinner'})));const dates=computeDates(answers);const dq=dates?`?checkIn=${dates.ci}&checkOut=${dates.co}`:'';let listings=[];try{({listings}=await api.listings(dq));}catch(e){}const ranked=listings.map(l=>({l,s:scoreListing(l,answers)})).sort((a,b)=>b.s-a.s).slice(0,6).map(x=>x.l);renderResults(ranked,dates);}
+  function renderResults(matches,dates){const lq=listingQuery(answers);const grid=h('div',{class:'grid',style:{marginTop:'22px'}},...matches.map(l=>{const card=listingCard(l,{query:lq});card.addEventListener('click',close);const reasons=matchReasons(l,answers);return h('div',{class:'quiz-match'},card,reasons.length?h('div',{class:'quiz-why'},'✓ ',reasons.join(' · ')):null);}));frame(h('div',{},h('div',{class:'center'},h('div',{style:{fontSize:'44px'}},'✨'),h('h2',{class:'quiz-q'},'Your perfect matches'),h('p',{class:'muted'},dates?`Available ${fmtDate(dates.ci)} – ${fmtDate(dates.co)} · hand-picked from your answers, booking-fee free.`:'Hand-picked from your answers — and every one is booking-fee free.')),matches.length?grid:h('p',{class:'muted center',style:{padding:'20px'}},dates?'No homes are free for those exact dates. Try “I’m flexible” or a different month.':'Browse all our homes to find your fit.'),h('div',{class:'row',style:{justifyContent:'center',marginTop:'26px',flexWrap:'wrap'}},h('button',{class:'btn btn-primary btn-lg',onClick:()=>{close();navigate('/search?'+quizQuery(answers));}},'Browse all matches'),h('button',{class:'btn btn-outline',onClick:()=>{step=0;for(const k in answers)delete answers[k];renderQ();}},'↻ Retake quiz'))));}
+  renderQ();
+}
+
+/* ---------- routes + boot ---------- */
+route('/',homeView);route('/search',searchView);route('/listing/:id',listingView);route('/login',()=>authForm('login'));route('/signup',()=>authForm('signup'));route('/trips',tripsView);route('/favorites',favoritesView);route('/inbox',inboxView);route('/profile',profileView);route('/about',aboutView);route('/quiz',()=>{homeView();openQuiz();});route('/host',hostView);route('/host/new',hostEditView);route('/host/edit/:id',hostEditView);
+notFound=()=>mount($('#app'),h('div',{class:'container'},empty('🧭','Page not found','The page you’re looking for doesn’t exist.',h('a',{class:'btn btn-primary',href:'#/'},'Go home'))));
+function authForm(mode){
+  const app=$('#app');const isSignup=mode==='signup';const{query}=parseHash();
+  let role=query.role==='host'?'host':'guest';
+  const name=h('input',{placeholder:'Jane Doe',autocomplete:'name'});
+  const email=h('input',{type:'email',placeholder:'you@email.com',autocomplete:'email'});
+  const password=h('input',{type:'password',placeholder:'••••••••',autocomplete:isSignup?'new-password':'current-password'});
+  const btn=h('button',{class:'btn btn-primary btn-block btn-lg'});
+  const guestCard=h('div',{class:'role-card',onClick:()=>setRole('guest')},h('div',{class:'ico'},'🧳'),h('b',{},'I’m a guest'),h('span',{},'Discover & book stays across the USA'));
+  const ownerCard=h('div',{class:'role-card',onClick:()=>setRole('host')},h('div',{class:'ico'},'🏡'),h('b',{},'I’m a property owner'),h('span',{},'List your home and earn on your terms'));
+  const headEl=h('div',{class:'auth-head'});
+  const hostNote=h('p',{class:'muted center',style:{fontSize:'13px',margin:0}},'You’ll be taken straight to listing your first property.');
+  function setRole(r){role=r;guestCard.classList.toggle('on',r==='guest');ownerCard.classList.toggle('on',r==='host');btn.textContent=r==='host'?'Create owner account':'Create guest account';mount(headEl,r==='host'?'🏡 Become a SmartStay host':'🧳 Join SmartStay to book');hostNote.style.display=r==='host'?'block':'none';}
+  if(isSignup)setRole(role);else{mount(headEl,'Welcome back');btn.textContent='Log in';}
+  const submit=async()=>{btn.disabled=true;btn.textContent='Please wait…';try{const res=isSignup?await api.signup({name:name.value,email:email.value,password:password.value,isHost:role==='host'}):await api.login({email:email.value,password:password.value});auth.set(res.token,res.user);await loadFavorites();toast(`Welcome${res.user.name?', '+res.user.name.split(' ')[0]:''}! 👋`,'ok');navigate(isSignup&&role==='host'?'/host/new':(res.user.isHost&&!isSignup?'/host':'/'));}catch(e){toast(e.message,'err');btn.disabled=false;setRole(role);if(!isSignup)btn.textContent='Log in';}};
+  [name,email,password].forEach(el=>el.addEventListener('keydown',e=>{if(e.key==='Enter')submit();}));btn.addEventListener('click',submit);
+  const field=(l,n)=>h('div',{class:'field-group'},h('label',{},l),n);
+  mount(app,h('div',{class:'auth-wrap'},headEl,h('div',{class:'auth-body'},h('div',{class:'form'},isSignup?h('div',{},h('label',{style:{fontSize:'13px',fontWeight:700,display:'block',marginBottom:'8px'}},'How do you want to use SmartStay?'),h('div',{class:'role-cards'},guestCard,ownerCard)):null,isSignup?field('Full name',name):null,field('Email',email),field('Password',password),btn,!isSignup?h('div',{class:'demo-note'},'Try the demo — email ',h('strong',{},'guest@smartstay.us'),', password ',h('strong',{},'password123')):null,isSignup?hostNote:null),h('p',{class:'center muted',style:{marginTop:'18px'}},isSignup?'Already have an account? ':'New to SmartStay? ',h('a',{href:isSignup?'#/login':'#/signup',style:{color:'var(--brand)',fontWeight:600}},isSignup?'Log in':'Sign up')))));
+}
+window.addEventListener('auth-change',renderHeader);
+async function boot(){renderHeader();renderFooter();if(auth.isLoggedIn){try{const{user}=await api.me();if(user)auth.update(user);}catch(e){}await loadFavorites();}window.addEventListener('hashchange',resolve);resolve();}
+boot();
+</script>
+
+</body>
+</html>
