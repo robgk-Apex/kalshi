@@ -1,10 +1,3 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="SmartStay USA — rent beautiful homes across the USA. No guest booking fees, ever.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%A1%3C/text%3E%3C/svg%3E">
 <title>SmartStay USA — Book unforgettable stays</title>
 <style>
 :root{
@@ -281,8 +274,6 @@ footer#app-footer{border-top:1px solid var(--line);background:var(--bg-2);margin
 .demo-banner a{text-decoration:underline}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
 </style>
-</head>
-<body>
 
 <div class="demo-banner">✨ Live interactive demo — data lives in your browser. Log in with <strong>guest@smartstay.us</strong> / <strong>password123</strong> or sign up.</div>
 <header id="app-header"></header>
@@ -380,27 +371,8 @@ const daysFromNow=n=>{const d=new Date();d.setUTCDate(d.getUTCDate()+n);return d
 const isoAgo=d=>{const x=new Date();x.setUTCDate(x.getUTCDate()-d);return x.toISOString();};
 const AMENITY_VOCAB=['Wifi','Kitchen','Pool','Hot tub','Free parking','Air conditioning','Heating','Washer','Dryer','EV charger','Gym','Pets allowed','Fireplace','Beach access','Lake access','Mountain view','Ocean view','Workspace','BBQ grill','Patio','Ski-in/ski-out'];
 const TYPE_VOCAB=['House','Apartment','Cabin','Condo','Villa','Cottage','Loft','Townhouse'];
-const LS_KEY='smartstay_pages_db_v4';
+const LS_KEY='smartstay_demo_db_v3';
 let DB;
-
-const _U=(id)=>'https://images.unsplash.com/photo-'+id+'?auto=format&fit=crop&w=1200&q=80';
-const _IDS={
- 'Malibu':['1613490493576-7fde63acd811','1600585154340-be6161a56a0c','1600566753086-00f18fb6b3ea','1600210492486-724fe5c67fb0','1600607687939-ce8a6c25118c'],
- 'Aspen':['1518780664697-55e3ad937233','1493809842364-78817add7ffb','1600585152220-90363fe7e115','1502672260266-1c1ef2d93688','1522708323590-d24dbb6b0267'],
- 'Austin':['1560448204-e02f11c3d0e2','1502005229762-cf1b2da7c5d6','1600121848594-d8644e57abab','1600047509807-ba8f99d2cdde'],
- 'Miami Beach':['1580587771525-78b9dba3b914','1600607687939-ce8a6c25118c','1600566753086-00f18fb6b3ea','1600585154340-be6161a56a0c'],
- 'Lake Tahoe':['1449844908441-8829872d2607','1493809842364-78817add7ffb','1502672260266-1c1ef2d93688','1600585152220-90363fe7e115'],
- 'Nashville':['1512917774080-9991f1c4c750','1600596542815-ffad4c1539a9','1600607687939-ce8a6c25118c','1600566753086-00f18fb6b3ea'],
- 'Scottsdale':['1568605114967-8130f3a36994','1600585154340-be6161a56a0c','1600210492486-724fe5c67fb0','1600607687939-ce8a6c25118c'],
- 'Savannah':['1570129477492-45c003edd2be','1600596542815-ffad4c1539a9','1522708323590-d24dbb6b0267','1600566753086-00f18fb6b3ea'],
- 'Big Bear Lake':['1493809842364-78817add7ffb','1518780664697-55e3ad937233','1502672260266-1c1ef2d93688','1600585152220-90363fe7e115'],
- 'Brooklyn':['1600121848594-d8644e57abab','1560448204-e02f11c3d0e2','1502005229762-cf1b2da7c5d6','1600047509807-ba8f99d2cdde'],
- 'Sedona':['1600585152220-90363fe7e115','1568605114967-8130f3a36994','1600210492486-724fe5c67fb0','1600607687939-ce8a6c25118c'],
- 'Outer Banks':['1600596542815-ffad4c1539a9','1512917774080-9991f1c4c750','1449844908441-8829872d2607','1600566753086-00f18fb6b3ea'],
-};
-const PHOTOS_BY_CITY={};for(const [c,ids] of Object.entries(_IDS)) PHOTOS_BY_CITY[c]=ids.map(_U);
-const PRESET_REAL=['1568605114967-8130f3a36994','1512917774080-9991f1c4c750','1600585154340-be6161a56a0c','1600596542815-ffad4c1539a9','1600607687939-ce8a6c25118c','1600566753086-00f18fb6b3ea','1570129477492-45c003edd2be','1449844908441-8829872d2607','1613490493576-7fde63acd811','1502672260266-1c1ef2d93688','1560448204-e02f11c3d0e2','1493809842364-78817add7ffb'].map(_U);
-
 
 function seedDB(){
   const users=[],listings=[],reviews=[],bookings=[],favorites=[],messages=[];
@@ -428,7 +400,7 @@ function seedDB(){
   L.forEach((it,idx)=>{
     const theme=THEME_BY_CITY[it.city]||'house';
     const[lat,lng]=COORDS[it.city]||[39.5,-98.35];
-    const listing={id:uid(),hostId:it.host.id,title:it.title,description:it.desc,type:it.type,city:it.city,state:it.state,lat,lng,bedrooms:it.bedrooms,beds:it.beds,bathrooms:it.bathrooms,maxGuests:it.maxGuests,amenities:it.amenities,photos:(PHOTOS_BY_CITY[it.city]||photoSet(theme,`${it.city}, ${it.state}`)),pricing:it.pricing,minNights:it.minNights,instantBook:it.instantBook,blockedDates:[],createdAt:isoAgo(30+idx*7)};
+    const listing={id:uid(),hostId:it.host.id,title:it.title,description:it.desc,type:it.type,city:it.city,state:it.state,lat,lng,bedrooms:it.bedrooms,beds:it.beds,bathrooms:it.bathrooms,maxGuests:it.maxGuests,amenities:it.amenities,photos:photoSet(theme,`${it.city}, ${it.state}`),pricing:it.pricing,minNights:it.minNights,instantBook:it.instantBook,blockedDates:[],createdAt:isoAgo(30+idx*7)};
     listings.push(listing);
     const n=3+(idx%3);
     for(let i=0;i<n;i++){const rv=reviewers[(i+idx)%reviewers.length];reviews.push({id:uid(),listingId:listing.id,guestId:rv.id,rating:(i%5===0)?4:5,comment:snippets[(i+idx)%snippets.length],createdAt:isoAgo(5+((i+idx*13)%110)),bookingId:null});}
@@ -856,7 +828,7 @@ async function favoritesView(){if(!requireAuth())return;const app=$('#app');moun
 async function inboxView(){if(!requireAuth())return;const app=$('#app');mount(app,h('div',{class:'container',style:{paddingTop:'30px',paddingBottom:'40px'}},h('h1',{style:{fontSize:'30px'}},'Messages'),empty('✉️','No messages yet','Once you book or host a stay, your conversations show up here.',h('a',{class:'btn btn-primary',href:'#/search'},'Browse homes'))));}
 function profileView(){if(!requireAuth())return;const app=$('#app');const u=auth.user;const name=h('input',{class:'input',value:u.name});const bio=h('textarea',{class:'input',placeholder:'Tell guests a little about yourself…'});bio.value=u.bio||'';const isHost=h('input',{type:'checkbox',checked:u.isHost});mount(app,h('div',{class:'container',style:{paddingTop:'30px',paddingBottom:'40px',maxWidth:'620px'}},h('h1',{style:{fontSize:'30px'}},'Account'),h('div',{class:'row',style:{margin:'18px 0'}},img(u.avatar,{class:'avatar',style:{width:'76px',height:'76px'}}),h('div',{},h('strong',{style:{fontSize:'18px'}},u.name),h('div',{class:'muted'},u.email))),h('div',{class:'form'},h('div',{class:'field-group'},h('label',{},'Name'),name),h('div',{class:'field-group'},h('label',{},'About'),bio),h('label',{class:'check'},isHost,'🏡 Enable hosting'),h('button',{class:'btn btn-primary',style:{alignSelf:'flex-start'},onClick:async()=>{try{const{user}=await api.patch('/auth/me',{name:name.value,bio:bio.value,isHost:isHost.checked});auth.update(user);toast('Profile saved','ok');}catch(e){toast(e.message,'err');}}},'Save changes'),h('div',{class:'menu-sep'}),h('button',{class:'btn btn-outline',style:{alignSelf:'flex-start'},onClick:()=>{auth.clear();navigate('/');}},'Log out'))));}
 
-const PRESET_PHOTOS=PRESET_REAL;
+const PRESET_PHOTOS=Array.from({length:12},(_,i)=>svgPhoto((i*29)%360,PHOTO_EMOJI[i%PHOTO_EMOJI.length],'Your home'));
 function openCalendar(listing,bookings,reload){
   const mine=bookings.filter(b=>b.listingId===listing.id&&b.status!=='cancelled');
   const now=new Date();const state={y:now.getFullYear(),m:now.getMonth()};
@@ -1038,5 +1010,3 @@ window.addEventListener('auth-change',renderHeader);
 async function boot(){renderHeader();renderFooter();if(auth.isLoggedIn){try{const{user}=await api.me();if(user)auth.update(user);}catch(e){}await loadFavorites();}window.addEventListener('hashchange',resolve);resolve();}
 boot();
 </script>
-</body>
-</html>
