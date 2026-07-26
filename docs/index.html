@@ -307,7 +307,7 @@ function svgAvatar(name){
     <text x='60' y='76' font-size='52' text-anchor='middle' fill='#fff' font-family='Georgia,serif'>${initials}</text></svg>`;
   return 'data:image/svg+xml,'+encodeURIComponent(svg);
 }
-const HERO_BG = 'https://loremflickr.com/1600/900/beach,house?lock=7';
+const HERO_BG = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=2000&q=80';
 
 /* ---------- pricing / availability engine ---------- */
 const SERVICE_FEE_PCT=0, TAX_PCT=0.08, AIRBNB_GUEST_FEE_PCT=0.14;
@@ -347,30 +347,29 @@ const daysFromNow=n=>{const d=new Date();d.setUTCDate(d.getUTCDate()+n);return d
 const isoAgo=d=>{const x=new Date();x.setUTCDate(x.getUTCDate()-d);return x.toISOString();};
 const AMENITY_VOCAB=['Wifi','Kitchen','Pool','Hot tub','Free parking','Air conditioning','Heating','Washer','Dryer','EV charger','Gym','Pets allowed','Fireplace','Beach access','Lake access','Mountain view','Ocean view','Workspace','BBQ grill','Patio','Ski-in/ski-out'];
 const TYPE_VOCAB=['House','Apartment','Cabin','Condo','Villa','Cottage','Loft','Townhouse'];
-const LS_KEY='smartstay_pages_db_v1';
+const LS_KEY='smartstay_pages_db_v2';
 let DB;
 
 
-/* ---- Real property photography (loads on a normal browser / GitHub Pages) ---- */
-const _LF=(kw,lock)=>'https://loremflickr.com/800/600/'+kw+'?lock='+lock;
-const _KW={
-  'Malibu':['villa','pool','ocean','interior'],
-  'Aspen':['cabin','snow','fireplace','interior'],
-  'Austin':['apartment','city','livingroom','kitchen'],
-  'Miami Beach':['beach','pool','apartment','balcony'],
-  'Lake Tahoe':['lake','cabin','forest','interior'],
-  'Nashville':['house','porch','livingroom','bedroom'],
-  'Scottsdale':['desert','pool','house','patio'],
-  'Savannah':['cottage','garden','house','interior'],
-  'Big Bear Lake':['cabin','forest','mountain','interior'],
-  'Brooklyn':['apartment','city','livingroom','bedroom'],
-  'Sedona':['desert','mountain','house','patio'],
-  'Outer Banks':['beach','house','ocean','deck'],
+/* ---- Curated real property photography (stock homes/interiors) ---- */
+const _U=(id)=>'https://images.unsplash.com/photo-'+id+'?auto=format&fit=crop&w=1200&q=80';
+const _IDS={
+ 'Malibu':['1613490493576-7fde63acd811','1600585154340-be6161a56a0c','1600566753086-00f18fb6b3ea','1600210492486-724fe5c67fb0','1600607687939-ce8a6c25118c'],
+ 'Aspen':['1518780664697-55e3ad937233','1493809842364-78817add7ffb','1600585152220-90363fe7e115','1502672260266-1c1ef2d93688','1522708323590-d24dbb6b0267'],
+ 'Austin':['1560448204-e02f11c3d0e2','1502005229762-cf1b2da7c5d6','1600121848594-d8644e57abab','1600047509807-ba8f99d2cdde'],
+ 'Miami Beach':['1580587771525-78b9dba3b914','1600607687939-ce8a6c25118c','1600566753086-00f18fb6b3ea','1600585154340-be6161a56a0c'],
+ 'Lake Tahoe':['1449844908441-8829872d2607','1493809842364-78817add7ffb','1502672260266-1c1ef2d93688','1600585152220-90363fe7e115'],
+ 'Nashville':['1512917774080-9991f1c4c750','1600596542815-ffad4c1539a9','1600607687939-ce8a6c25118c','1600566753086-00f18fb6b3ea'],
+ 'Scottsdale':['1568605114967-8130f3a36994','1600585154340-be6161a56a0c','1600210492486-724fe5c67fb0','1600607687939-ce8a6c25118c'],
+ 'Savannah':['1570129477492-45c003edd2be','1600596542815-ffad4c1539a9','1522708323590-d24dbb6b0267','1600566753086-00f18fb6b3ea'],
+ 'Big Bear Lake':['1493809842364-78817add7ffb','1518780664697-55e3ad937233','1502672260266-1c1ef2d93688','1600585152220-90363fe7e115'],
+ 'Brooklyn':['1600121848594-d8644e57abab','1560448204-e02f11c3d0e2','1502005229762-cf1b2da7c5d6','1600047509807-ba8f99d2cdde'],
+ 'Sedona':['1600585152220-90363fe7e115','1568605114967-8130f3a36994','1600210492486-724fe5c67fb0','1600607687939-ce8a6c25118c'],
+ 'Outer Banks':['1600596542815-ffad4c1539a9','1512917774080-9991f1c4c750','1449844908441-8829872d2607','1600566753086-00f18fb6b3ea'],
 };
 const PHOTOS_BY_CITY={};
-let _lk=10;
-for(const [city,kws] of Object.entries(_KW)){ PHOTOS_BY_CITY[city]=kws.map(kw=>_LF(kw,++_lk)); }
-const PRESET_REAL=['house','villa','cabin','apartment','pool','interior','livingroom','bedroom','kitchen','beach','cottage','loft'].map((kw,i)=>_LF(kw,100+i));
+for(const [c,ids] of Object.entries(_IDS)) PHOTOS_BY_CITY[c]=ids.map(_U);
+const PRESET_REAL=['1568605114967-8130f3a36994','1512917774080-9991f1c4c750','1600585154340-be6161a56a0c','1600596542815-ffad4c1539a9','1600607687939-ce8a6c25118c','1600566753086-00f18fb6b3ea','1570129477492-45c003edd2be','1449844908441-8829872d2607','1613490493576-7fde63acd811','1502672260266-1c1ef2d93688','1560448204-e02f11c3d0e2','1493809842364-78817add7ffb'].map(_U);
 
 function seedDB(){
   const users=[],listings=[],reviews=[],bookings=[],favorites=[],messages=[];
