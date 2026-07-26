@@ -53,7 +53,7 @@ const HEAD=`<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="SmartStay USA — rent beautiful homes across the USA. Fair fees: hosts keep 90%, guests pay a flat 5%.">
+<meta name="description" content="SmartStay USA — rent beautiful homes across the USA for a weekend, a week, or a whole season.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%A1%3C/text%3E%3C/svg%3E">
 `;
 // artifact starts with `<title>`; put the head meta above it, close head after </style>
