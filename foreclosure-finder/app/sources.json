@@ -1,0 +1,33 @@
+{
+  "_note": "Start URLs for each foreclosure / REO site. {state} is replaced with a 2-letter state code. Sites redesign often: if a source returns 0 listings, open the site in a browser, run a search, and paste that results-page URL here.",
+  "demo": {
+    "name": "Demo data (not real listings)",
+    "home": "",
+    "search_urls": []
+  },
+  "hud": {
+    "name": "HUD Home Store",
+    "home": "https://www.hudhomestore.gov",
+    "search_urls": ["https://www.hudhomestore.gov/searchresult?citystate={state}"]
+  },
+  "homepath": {
+    "name": "Fannie Mae HomePath",
+    "home": "https://homepath.fanniemae.com",
+    "search_urls": ["https://homepath.fanniemae.com/property-finder?location={state}"]
+  },
+  "homesteps": {
+    "name": "Freddie Mac HomeSteps",
+    "home": "https://www.homesteps.com",
+    "search_urls": ["https://www.homesteps.com/listing/search?search={state}"]
+  },
+  "usda": {
+    "name": "USDA Rural Development REO",
+    "home": "https://properties.sc.egov.usda.gov",
+    "search_urls": ["https://properties.sc.egov.usda.gov/resales/public/searchSFH?state={state}"]
+  },
+  "va": {
+    "name": "VA REO (Vendor Resource Management)",
+    "home": "https://listings.vrmco.com",
+    "search_urls": ["https://listings.vrmco.com/search?state={state}"]
+  }
+}
