@@ -3,6 +3,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = v => v == null ? "—" : "$" + Math.round(v).toLocaleString();
+const ppsf = v => v < 1 ? "$" + v.toFixed(2) : money(v);
 const num = v => v == null ? "—" : Number(v).toLocaleString();
 const api = (path, params) => {
   const u = new URL(path, location.origin);
@@ -12,7 +13,7 @@ const api = (path, params) => {
 };
 
 let facets = null, listMap = null, listLayer = null, view = "grid", page = 1, lastPins = [];
-const TEXT_FILTERS = ["q", "state", "city", "zip", "min_price", "max_price", "min_sqft", "max_sqft", "source", "sort"];
+const TEXT_FILTERS = ["q", "state", "city", "zip", "min_price", "max_price", "min_sqft", "max_sqft", "source", "property_type", "sort"];
 
 /* ---------- filter state <-> URL ---------- */
 function readFilters() {
@@ -59,6 +60,8 @@ async function loadFacets() {
     facets.states.map(s => `<option value="${s.state}">${s.state} (${s.n})</option>`).join("");
   $("#source").innerHTML = `<option value="">All sources</option>` +
     facets.sources.map(s => `<option value="${s.source}">${esc(s.name)} (${s.n})</option>`).join("");
+  $("#property_type").innerHTML = `<option value="">All types</option>` +
+    facets.types.map(t => `<option value="${esc(t.property_type)}">${esc(t.property_type)} (${t.n})</option>`).join("");
   $("#amenities").innerHTML = facets.amenities.length ? facets.amenities.map(a =>
     `<label><input type="checkbox" value="${esc(a.name)}"> ${esc(a.name)} <span class="n">${a.n}</span></label>`).join("")
     : `<p class="note">No amenity data yet.</p>`;
@@ -68,8 +71,8 @@ async function loadFacets() {
 
 /* ---------- results ---------- */
 function card(p) {
-  const st = p.status && !/^avail/i.test(p.status) ? `<span class="badge warn">${esc(p.status)}</span>` : "";
-  const img = p.cover_photo ? `<img src="${esc(p.cover_photo)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="noimg">No photo</div>`;
+  const st = p.status && !/^(avail|active|listed|for sale)/i.test(p.status) ? `<span class="badge warn">${esc(p.status)}</span>` : "";
+  const img = p.cover_photo ? `<img src="${esc(p.cover_photo)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=noimg>No photo</div>'">` : `<div class="noimg">No photo</div>`;
   const srcName = facets?.sources.find(s => s.source === p.source)?.name || p.source;
   return `<a class="card" href="/property/${p.id}" data-link>
     <div class="ph">${img}${st}${p.photo_count ? `<span class="pc">${p.photo_count} photos</span>` : ""}</div>
@@ -77,7 +80,7 @@ function card(p) {
       <div class="price">${money(p.price)}</div>
       <div class="facts">${num(p.beds)} bd · ${num(p.baths)} ba · ${num(p.sqft)} sq ft</div>
       <div class="addr">${esc(p.address)}, ${esc(p.city || "")}, ${esc(p.state || "")} ${esc(p.zip || "")}</div>
-      <div class="src">${esc(srcName)}${p.price && p.sqft ? ` · ${money(p.price / p.sqft)}/sq ft` : ""}</div>
+      <div class="src">${esc(srcName)}${p.price && p.sqft ? ` · ${ppsf(p.price / p.sqft)}/sq ft` : ""}</div>
     </div></a>`;
 }
 let reqId = 0;
@@ -219,7 +222,7 @@ async function loadComps(p, dmap) {
     disc != null ? ["List price vs. value", (disc >= 0 ? disc + "% below" : -disc + "% above"), "", disc >= 0 ? "good" : "bad"] : null,
   ].filter(Boolean);
   box.innerHTML = `<h2>${real ? "Comparable sales" : "Nearby comparable listings"}</h2>
-    <p class="note ${real ? "" : "warn"}">${esc(d.error || "")} ${real ? `${s.count} comps from RentCast: recent sales and listings near this home.` : `These are other foreclosure listings nearby, not closed sales. Set <code>RENTCAST_API_KEY</code> to pull real sold comps.`}</p>
+    <p class="note ${real ? "" : "warn"}">${esc(d.error || "")} ${real ? `${s.count} comps from RentCast: recent sales and listings near this home.` : `Other foreclosure listings within ${d.radius_mi || 5} miles, not closed sales.${d.error ? "" : " Set <code>RENTCAST_API_KEY</code> to pull real sold comps."}`}</p>
     <div class="stats">${stats.map(([k, v, sub, cls]) => `<div class="stat"><span>${k}</span><b class="${cls || ""}">${v}</b>${sub ? `<span>${sub}</span>` : ""}</div>`).join("")}</div>
     ${d.comps.length ? `<div class="tbl-wrap"><table><thead><tr><th>Address</th><th class="num">Price</th><th class="num">Bd</th><th class="num">Ba</th><th class="num">Sq ft</th><th class="num">$/sq ft</th><th class="num">Dist.</th><th>${real ? "Date" : "Status"}</th></tr></thead><tbody>
       <tr class="subj"><td>This home</td><td class="num">${money(p.price)}</td><td class="num">${num(p.beds)}</td><td class="num">${num(p.baths)}</td><td class="num">${num(p.sqft)}</td><td class="num">${p.price_per_sqft ? money(p.price_per_sqft) : "—"}</td><td class="num">—</td><td></td></tr>
@@ -257,7 +260,7 @@ const debounced = () => { clearTimeout(t); t = setTimeout(() => { page = 1; sear
 (async () => {
   await loadFacets();
   ["q", "zip", "min_price", "max_price", "min_sqft", "max_sqft"].forEach(id => $("#" + id).addEventListener("input", debounced));
-  ["city", "source", "sort"].forEach(id => $("#" + id).addEventListener("change", () => { page = 1; search(); }));
+  ["city", "source", "property_type", "sort"].forEach(id => $("#" + id).addEventListener("change", () => { page = 1; search(); }));
   $("#state").addEventListener("change", () => { fillCities(); page = 1; search(); });
   $("#amenities").addEventListener("change", () => { page = 1; search(); });
   $$(".chips").forEach(c => c.addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; $$("button", c).forEach(x => x.classList.toggle("on", x === b)); page = 1; search(); }));

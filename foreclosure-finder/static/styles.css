@@ -31,7 +31,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .link { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; }
 .only-mobile { display: none; }
 
-.layout { display: grid; grid-template-columns: 270px 1fr; gap: 24px; padding: 20px 24px; max-width: 1500px; margin: 0 auto; }
+.layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 24px; padding: 20px 24px; max-width: 1500px; margin: 0 auto; }
 .filters { position: sticky; top: 76px; align-self: start; max-height: calc(100vh - 96px); overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 .f-head { display: flex; justify-content: space-between; align-items: center; }
 .f-head h2 { margin: 0; font-size: 16px; }
@@ -98,7 +98,7 @@ legend { margin-bottom: 6px; padding: 0; }
 .thumbs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
 .thumbs img { width: 110px; height: 72px; object-fit: cover; border-radius: 6px; cursor: pointer; opacity: .7; border: 2px solid transparent; flex: none; }
 .thumbs img.on { opacity: 1; border-color: var(--accent); }
-.cols { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin-bottom: 20px; }
 .panel h2 { margin: 0 0 12px; font-size: 18px; }
 .kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px 18px; }
@@ -113,7 +113,7 @@ legend { margin-bottom: 6px; padding: 0; }
 .stat span { display: block; font-size: 12px; color: var(--muted); }
 .stat b { font-size: 20px; font-variant-numeric: tabular-nums; }
 .stat b.good { color: var(--good); } .stat b.bad { color: var(--bad); }
-.note { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
+.note { font-size: 13px; color: var(--muted); margin: 0 0 12px; overflow-wrap: anywhere; }
 .note.warn { color: var(--warn); }
 .tbl-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }

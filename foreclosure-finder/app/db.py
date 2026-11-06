@@ -68,10 +68,29 @@ def init():
         c.executescript(SCHEMA)
 
 
+TYPE_RULES = [  # first match wins
+    (r"manufact|mobile", "Manufactured Home"), (r"town", "Townhome"),
+    (r"condo", "Condo"), (r"co-?op", "Co-op"),
+    (r"duplex|triplex|four-?plex|2-4|two to four|multi|\bunits?\b", "Multi-Family (2-4 units)"),
+    (r"land|lot|plot|acre", "Land"), (r"single|sfr|detached|house|home", "Single Family"),
+]
+
+
+def canonical_type(t):
+    if not t:
+        return None
+    import re
+    for pat, name in TYPE_RULES:
+        if re.search(pat, t, re.I):
+            return name
+    return "Other"
+
+
 def upsert_property(c, p: dict) -> int:
     """Insert or update one normalized listing; returns its row id. Photos are merged."""
     now = time.time()
     vals = {k: p.get(k) for k in FIELDS}
+    vals["property_type"] = canonical_type(vals.get("property_type"))
     vals["amenities"] = json.dumps(sorted(set(p.get("amenities") or [])))
     vals["raw"] = json.dumps(p.get("raw"), default=str)[:200_000] if p.get("raw") else None
     cols = list(vals.keys())

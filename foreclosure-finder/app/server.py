@@ -51,7 +51,7 @@ def _cover_photos(c, ids):
 @app.get("/api/properties")
 def list_properties(
     q: str | None = None, state: str | None = None, city: str | None = None,
-    zip: str | None = None, source: str | None = None,
+    zip: str | None = None, source: str | None = None, property_type: str | None = None,
     min_price: float | None = None, max_price: float | None = None,
     min_beds: float | None = None, min_baths: float | None = None,
     min_sqft: float | None = None, max_sqft: float | None = None,
@@ -63,7 +63,8 @@ def list_properties(
     if q:
         where.append("(address LIKE ? OR city LIKE ? OR zip LIKE ? OR description LIKE ?)")
         args += [f"%{q}%"] * 4
-    for col, val in (("state", state and state.upper()), ("zip", zip), ("source", source)):
+    for col, val in (("state", state and state.upper()), ("zip", zip), ("source", source),
+                     ("property_type", property_type)):
         if val:
             where.append(f"{col} = ?")
             args.append(val)
@@ -110,6 +111,9 @@ def facets():
         cities = [dict(r) for r in c.execute(
             "SELECT state, city, COUNT(*) n FROM properties WHERE city IS NOT NULL "
             "GROUP BY state, city ORDER BY n DESC LIMIT 500")]
+        types = [dict(r) for r in c.execute(
+            "SELECT property_type, COUNT(*) n FROM properties WHERE property_type IS NOT NULL "
+            "GROUP BY property_type HAVING n >= 3 ORDER BY n DESC")]
         sources = [dict(r) for r in c.execute(
             "SELECT source, COUNT(*) n FROM properties GROUP BY source")]
         am = {}
@@ -119,7 +123,7 @@ def facets():
         pr = c.execute("SELECT MIN(price) lo, MAX(price) hi, COUNT(*) n FROM properties").fetchone()
     for s in sources:
         s["name"] = SOURCES.get(s["source"], {}).get("name", s["source"])
-    return {"states": states, "cities": cities, "sources": sources,
+    return {"states": states, "cities": cities, "sources": sources, "types": types,
             "amenities": sorted(({"name": k, "n": v} for k, v in am.items()),
                                 key=lambda x: -x["n"]),
             "price": dict(pr)}

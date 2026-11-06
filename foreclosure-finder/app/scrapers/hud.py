@@ -22,10 +22,11 @@ STATES = ("AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI 
           "NV NH NJ NM NY NC ND OH OK OR PA PR RI SC SD TN TX UT VT VA WA WV WI WY").split()
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                          "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"}
-EXTERIOR = re.compile(r"^(front|back|rear|side|street|exterior|ext|yard|aerial|garage|pool|"
-                      r"porch|deck|patio|roof|e\d+)", re.I)
-INTERIOR = re.compile(r"^(interior|int|kitchen|bath|bed|living|dining|family|den|laundry|"
-                      r"basement|room|hall|stair|closet|office|i\d+)", re.I)
+EXTERIOR = re.compile(r"front|back|rear|side|street|exterior|ext\b|yard|aerial|garage|pool|"
+                      r"porch|deck|patio|roof|shed|fence|driveway|elevation|view|^e\d+$", re.I)
+INTERIOR = re.compile(r"interior|int\b|kitchen|bath|bed|living|dining|family|den\b|laundry|"
+                      r"basement|room|hall|stair|closet|office|master|primary|sunroom|foyer|"
+                      r"utility|pantry|loft|attic|fireplace|^i\d+$", re.I)
 
 
 def _hidden_json(page: str, input_id: str):
@@ -45,10 +46,18 @@ def _num(v):
         return None
 
 
+def photo_label(name: str) -> str:
+    """'Primarybedroom_585140.png' -> 'Primarybedroom'; 'i1_73985124.png' -> 'i1'."""
+    base = re.sub(r"\.\w+$", "", name)
+    base = re.sub(r"[_ -]+\d{5,}$", "", base)  # trailing upload id
+    return base.replace("_", " ").strip()
+
+
 def photo_kind(name: str, index: int) -> str:
-    if INTERIOR.match(name):
+    label = photo_label(name)
+    if INTERIOR.search(label):
         return "interior"
-    if EXTERIOR.match(name):
+    if EXTERIOR.search(label):
         return "exterior"
     return "exterior" if index == 0 else "unknown"
 
@@ -59,9 +68,13 @@ def _photos(gallery: str | None, thumb: str | None) -> list[dict]:
         names = [thumb.rsplit("/", 1)[-1]]
     out = []
     for i, n in enumerate(dict.fromkeys(names)):
-        label = re.sub(r"_\d+\.\w+$", "", n)
-        label = {"i": "Interior", "e": "Exterior"}.get(re.sub(r"\d+$", "", label).lower(),
-                                                       label.replace("_", " ").title())
+        label = photo_label(n)
+        if re.fullmatch(r"[ie]\d+", label, re.I):
+            label = "Interior" if label[0].lower() == "i" else "Exterior"
+        elif re.fullmatch(r"[\d ()]+|img \d+|mls \d+|dsc\w*|photo ?\d*", label, re.I):
+            label = None  # just a number: no useful caption
+        else:
+            label = label.title()
         out.append({"url": PHOTO.format(n), "kind": photo_kind(n, i), "caption": label})
     return out
 

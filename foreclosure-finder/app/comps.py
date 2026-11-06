@@ -80,7 +80,17 @@ def rentcast_comps(p: dict, key: str) -> dict:
             "summary": s, "comps": comps}
 
 
-def local_comps(c, p: dict, radius_mi=5.0, limit=12) -> dict:
+def local_comps(c, p: dict, limit=12) -> dict:
+    # Start close and widen until there are a few comps to compare against.
+    for radius in (3, 5, 10, 25):
+        out = _local_comps(c, p, radius, limit)
+        if len(out["comps"]) >= 4:
+            break
+    out["radius_mi"] = radius
+    return out
+
+
+def _local_comps(c, p: dict, radius_mi=5.0, limit=12) -> dict:
     rows = c.execute("SELECT * FROM properties WHERE id != ? AND price IS NOT NULL", (p["id"],))
     cands = []
     for r in rows:
@@ -122,8 +132,15 @@ def get_comps(p: dict, refresh=False) -> dict:
                 c.execute("INSERT OR REPLACE INTO comps_cache VALUES (?,?,?)",
                           (p["id"], json.dumps(out), time.time()))
                 return out
-            except Exception as e:
-                out = local_comps(c, p)
-                out["error"] = f"RentCast lookup failed ({e}); showing local listings instead."
-                return out
+            except httpx.HTTPStatusError as e:
+                code = e.response.status_code
+                why = {401: "RentCast rejected the API key", 403: "RentCast refused the request",
+                       404: "RentCast has no data for this address",
+                       429: "the RentCast monthly lookup limit is used up"}.get(
+                           code, f"RentCast returned an error ({code})")
+            except Exception:
+                why = "RentCast couldn't be reached"
+            out = local_comps(c, p)
+            out["error"] = f"No sold comps: {why}."
+            return out
         return local_comps(c, p)

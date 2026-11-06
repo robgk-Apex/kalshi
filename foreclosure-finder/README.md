@@ -1,54 +1,51 @@
 # Foreclosure Finder
 
-Pulls foreclosure / bank-owned (REO) listings from government and GSE sites into one
+Pulls foreclosure / bank-owned (REO) listings from HUD, Fannie Mae and Freddie Mac into one
 searchable site. You get photos (sorted into exterior and interior), prices, filters for
 location, price, size and amenities, and comps for each property.
 
-## Quick start
+## Easiest: put it online (Render, free)
+
+1. Sign in at https://render.com with GitHub (the same way as the Kalshi board).
+2. **New > Blueprint**, pick `robgk-Apex/kalshi`, branch `claude/relaxed-goodall-tj31fi`,
+   and set **Blueprint Path** to `foreclosure-finder/render.yaml`. Click **Apply**.
+3. When it says **Live**, open the URL. It starts with the bundled listings snapshot and
+   re-pulls every source once a day. To get real sold comps, paste your RentCast key into
+   the `RENTCAST_API_KEY` field Render asks for.
+
+## On your Windows PC
+
+Double-click `START-FORECLOSURE-FINDER.bat` (it opens http://localhost:8000).
+Double-click `REFRESH-LISTINGS.bat` to pull fresh listings (takes about an hour).
+
+## From a terminal
 
 ```bash
 cd foreclosure-finder
 pip install -r requirements.txt
-playwright install chromium
-
-python -m app.seed_demo                 # optional: 72 sample listings to try the UI
 uvicorn app.server:app --port 8000      # open http://localhost:8000
 ```
 
-## Scraping real listings
+## Scraping
 
 ```bash
-python -m app.scrape --source hud --state GA --state FL
-python -m app.scrape --source all --state TX            # every source in app/sources.json
-python -m app.scrape --source hud --url "<a search-results URL you copied from the site>"
-python -m app.seed_demo --clear                         # remove demo rows once you have real data
+python -m app.scrape --source hud                 # whole country
+python -m app.scrape --source homepath --state GA # one state
+python -m app.scrape --source homesteps --state TX --state FL
 ```
 
-Sources (`app/sources.json`):
+| key | site | how |
+|---|---|---|
+| `hud` | HUD Home Store | listing JSON embedded in the search and property pages |
+| `homepath` | Fannie Mae HomePath | the site's JSON API, Fannie Mae-owned homes only |
+| `homesteps` | Freddie Mac HomeSteps | schema.org listing data + facts on each property page |
+| `usda`, `va`, any `--url` | other sites | generic headless-browser scraper (needs `playwright install chromium`) |
 
-| key | site |
-|---|---|
-| `hud` | HUD Home Store (hudhomestore.gov) |
-| `homepath` | Fannie Mae HomePath |
-| `homesteps` | Freddie Mac HomeSteps |
-| `usda` | USDA Rural Development REO |
-| `va` | VA REO (Vendor Resource Management) |
-
-**How it works:** the scraper opens the site's real search page in headless Chromium and
-records the JSON its own JavaScript loads. It finds the listing arrays in that JSON
-whatever the field names are (`app/normalize.py`), clicks "Next" through the result pages,
-then opens each listing's detail page to collect the full photo gallery. Photos are tagged
-exterior or interior from their captions and file names. Amenities (pool, garage, basement,
-FHA insurable, 203k eligible, …) come from the description and feature fields.
-
-Re-running a scrape updates existing rows by `(source, listing id)` and merges in new photos.
-Run it on a schedule (cron) to keep listings fresh.
-
-**If a source returns 0 listings:** these sites redesign often. Run a search on the site in
-your browser, copy the results-page URL, and pass it with `--url` or put it in
-`app/sources.json`. Use `-v` for debug logs. The default `--delay 1.5` keeps request rates
-polite. Check each site's terms of use before scraping it. Commercial portals (Zillow,
-Realtor.com, Auction.com, etc.) forbid scraping in their terms, so they aren't included.
+A run without `--state` covers the whole country and removes listings that are no longer
+for sale. Photos: HUD labels every photo (Front, Kitchen, Bath…), so they sort into
+Exterior/Interior. HomePath and HomeSteps photos aren't labeled; their first photo is the
+front of the house and the rest appear under "Other photos". `data/snapshot.db` is the
+bundled copy of the listings; refresh it with `python -c "from app import db; db.write_snapshot()"`.
 
 ## Comps
 
