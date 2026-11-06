@@ -1,0 +1,18 @@
+# Render Blueprint for the foreclosure site. In Render: New > Blueprint, pick this repo
+# and branch, and set "Blueprint Path" to foreclosure-finder/render.yaml.
+services:
+  - type: web
+    name: foreclosure-finder
+    runtime: docker
+    plan: free
+    branch: claude/relaxed-goodall-tj31fi
+    rootDir: foreclosure-finder
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/facets
+    autoDeploy: true
+    envVars:
+      - key: AUTO_REFRESH_HOURS
+        value: "24"
+      - key: RENTCAST_API_KEY
+        sync: false

@@ -109,3 +109,37 @@ def row_to_dict(r) -> dict:
     d["amenities"] = json.loads(d.get("amenities") or "[]")
     d.pop("raw", None)
     return d
+
+
+SNAPSHOT = os.path.join(os.path.dirname(__file__), "..", "data", "snapshot.db")
+
+
+def load_snapshot_if_empty():
+    """First run: copy in the bundled listings snapshot so the site isn't empty."""
+    if not os.path.exists(SNAPSHOT):
+        return
+    with connect() as c:
+        if c.execute("SELECT COUNT(*) FROM properties").fetchone()[0]:
+            return
+        c.execute("ATTACH DATABASE ? AS snap", (os.path.abspath(SNAPSHOT),))
+        c.execute("INSERT INTO properties SELECT * FROM snap.properties")
+        c.execute("INSERT INTO photos SELECT * FROM snap.photos")
+        c.commit()
+        c.execute("DETACH DATABASE snap")
+
+
+def write_snapshot():
+    """Copy the live DB (minus raw JSON and comps cache) to data/snapshot.db for shipping."""
+    if os.path.exists(SNAPSHOT):
+        os.remove(SNAPSHOT)
+    with connect() as c:
+        c.execute("ATTACH DATABASE ? AS snap", (os.path.abspath(SNAPSHOT),))
+        for t in ("properties", "photos"):
+            sql = c.execute("SELECT sql FROM sqlite_master WHERE name=?", (t,)).fetchone()[0]
+            c.execute(sql.replace(f"CREATE TABLE {t}", f"CREATE TABLE snap.{t}", 1))
+        c.execute("INSERT INTO snap.properties SELECT * FROM properties")
+        c.execute("UPDATE snap.properties SET raw = NULL")
+        c.execute("INSERT INTO snap.photos SELECT * FROM photos")
+        c.commit()
+        c.execute("DETACH DATABASE snap")
+    c2 = sqlite3.connect(SNAPSHOT); c2.execute("VACUUM"); c2.close()

@@ -18,6 +18,16 @@ SOURCES.pop("_note", None)
 
 app = FastAPI(title="Foreclosure Finder")
 db.init()
+db.load_snapshot_if_empty()
+
+
+@app.on_event("startup")
+def _start_refresh():
+    # Set AUTO_REFRESH_HOURS (e.g. 24) to re-scrape HUD, HomePath and HomeSteps on a timer.
+    hours = float(os.environ.get("AUTO_REFRESH_HOURS") or 0)
+    if hours > 0:
+        from .refresh import start
+        start(hours)
 
 SORTS = {
     "price_asc": "price ASC", "price_desc": "price DESC", "newest": "first_seen DESC",

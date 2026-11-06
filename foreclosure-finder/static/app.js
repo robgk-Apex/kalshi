@@ -168,12 +168,15 @@ let gPhotos = [], gIdx = 0;
 function renderGallery(all) {
   const g = $("#gallery");
   if (!all.length) { g.innerHTML = `<div class="g-main"><div class="noimg" style="display:grid;place-items:center;height:100%;color:var(--muted)">No photos available</div></div>`; return; }
-  const counts = {all: all.length, exterior: all.filter(p => p.kind === "exterior").length, interior: all.filter(p => p.kind === "interior").length};
+  const kindOf = p => (p.kind === "exterior" || p.kind === "interior") ? p.kind : "unknown";
+  const counts = {all: all.length};
+  all.forEach(p => counts[kindOf(p)] = (counts[kindOf(p)] || 0) + 1);
+  const LABEL = {all: "All", exterior: "Exterior", interior: "Interior", unknown: "Other photos"};
   const draw = (tab) => {
-    gPhotos = tab === "all" ? all : all.filter(p => p.kind === tab); gIdx = 0;
+    gPhotos = tab === "all" ? all : all.filter(p => kindOf(p) === tab); gIdx = 0;
     g.innerHTML = `
-      <div class="g-tabs">${["all", "exterior", "interior"].filter(t => t === "all" || counts[t]).map(t =>
-        `<button type="button" data-tab="${t}" class="${t === tab ? "on" : ""}">${t[0].toUpperCase() + t.slice(1)} (${counts[t]})</button>`).join("")}</div>
+      <div class="g-tabs">${["all", "exterior", "interior", "unknown"].filter(t => t === "all" || counts[t]).map(t =>
+        `<button type="button" data-tab="${t}" class="${t === tab ? "on" : ""}">${LABEL[t]} (${counts[t]})</button>`).join("")}</div>
       <div class="g-main"><img alt="" referrerpolicy="no-referrer"><span class="kind"></span></div>
       <div class="thumbs">${gPhotos.map((p, i) => `<img src="${esc(p.url)}" data-i="${i}" alt="${esc(p.caption || p.kind)}" loading="lazy" referrerpolicy="no-referrer">`).join("")}</div>`;
     show(0);
@@ -184,7 +187,7 @@ function renderGallery(all) {
   const show = i => {
     gIdx = (i + gPhotos.length) % gPhotos.length; const ph = gPhotos[gIdx];
     $(".g-main img", g).src = ph.url;
-    $(".g-main .kind", g).textContent = ph.caption || ph.kind;
+    $(".g-main .kind", g).textContent = ph.caption || (ph.kind === "unknown" ? `Photo ${gIdx + 1}` : ph.kind);
     $$(".thumbs img", g).forEach((t, j) => t.classList.toggle("on", j === gIdx));
   };
   g.show = show;
@@ -192,7 +195,7 @@ function renderGallery(all) {
 }
 function openLb() {
   const lb = $("#lightbox"); lb.hidden = false;
-  const upd = () => { const p = gPhotos[gIdx]; $("img", lb).src = p.url; $(".lb-cap", lb).textContent = `${gIdx + 1} / ${gPhotos.length} · ${p.caption || p.kind}`; };
+  const upd = () => { const p = gPhotos[gIdx]; $("img", lb).src = p.url; $(".lb-cap", lb).textContent = `${gIdx + 1} / ${gPhotos.length}` + (p.caption ? ` · ${p.caption}` : ""); };
   const step = d => { gIdx = (gIdx + d + gPhotos.length) % gPhotos.length; upd(); $("#gallery").show?.(gIdx); };
   $(".lb-prev", lb).onclick = () => step(-1); $(".lb-next", lb).onclick = () => step(1);
   $(".lb-close", lb).onclick = () => lb.hidden = true;
