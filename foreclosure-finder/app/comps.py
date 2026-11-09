@@ -134,7 +134,7 @@ def get_comps(p: dict, refresh=False) -> dict:
                 return out
             except httpx.HTTPStatusError as e:
                 code = e.response.status_code
-                why = {401: "RentCast rejected the API key", 403: "RentCast refused the request",
+                why = {401: "RentCast rejected the API key", 403: "the RentCast account has no active API plan (turn one on at app.rentcast.io/app/api)",
                        404: "RentCast has no data for this address",
                        429: "the RentCast monthly lookup limit is used up"}.get(
                            code, f"RentCast returned an error ({code})")
