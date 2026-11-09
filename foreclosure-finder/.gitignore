@@ -1,3 +1,4 @@
 data/*.db
 data/*.db-*
 !data/snapshot.db
+rentcast-key.txt
